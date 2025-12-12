@@ -1,0 +1,84 @@
+---
+title: "Final Project"
+author: "Fartun, Daija, and Kaela"
+format: html
+embed-resources: true
+execute:
+  warning: false
+  message: false
+editor: visual
+---
+
+# Topic: Rent burden
+
+## Problem: [Renters’ Affordability Challenges Worsened Last Year](https://www.jchs.harvard.edu/blog/renters-affordability-challenges-worsened-last-year)
+
+-   “The number of cost-burdened renter households hit yet another record high from 2021-2023”
+-   “In 2023, the number of renter households spending more than 30 percent of their incomes on rent and utilities hit an all-time high of 22.6 million.”
+-   “This included a record-high 12.1 million severely burdened households that spent more than half of their incomes on housing costs.” Nearly Half of Renter Households Are Cost-Burdened, Proportions Differ by Race Justifying the importance of this model
+    -   Nearly Half of Renter Households Are Cost-Burdened, Proportions Differ by Race (https://www.census.gov/newsroom/press-releases/2024/renter-households-cost-burdened-race.html)
+    -   Justifying the importance of this model
+
+## Research question:
+
+Can we develop a model that adequately predicts a household's rent burden status using socioeconomic and demographic characteristics? Which variables are the most important in predicting the extent to which a household is rent burdened?
+
+## Data
+
+The data were pulled from the IPUMS ACS 2023 microdata and the sample is limited to individuals that indicated they rent their dwelling. The dataset needs to be collapsed so that the unit of observation is the household.
+
+```{r}
+#Note: in this section, we need to clean the dataset, collapse it to the household level and then separate it into training and testing data. Then, we can do 2-3 visuals for exploratory data analysis.
+
+library(tidyverse)
+library(tidymodels)
+library(rpart.plot)
+library(vip)
+library(haven)
+
+data <- read_dta("ACS_extract.dta")
+acs2023 <- data |>
+  filter(ownershpd == 22 & hhincome > 0) |> #keep those who rent "with cash" and those with positive household income
+  select(-cbserial, -year, -sample, -gq, -ownershp, -ownershpd, -multigend, -perwt, -raced, -hispand)
+
+#Note: we have information on county fips but that's useless without the state fips added. Also, ACS apparently doesn't report on all counties so i'm not sure how useful it would be to create that new variable anyway. Just checked and i think there's enough variation that we can create a state/county fips variable and drop the countyfip once it's done since it's useless alone.
+
+#it seems like population density is more helpful for saying where a person is because people with the same state-county fips have the same population density
+#make note of unordered categorical variables
+  # hhtype, cbhhtype, region, statefip, countyfip, metro, city, multigend (might want to drop this), 
+#how to use strata and cluster?
+# might want to create an overcrowded variable which represents if there are less bedrooms in the household than the number of adults, but might not be necessary
+# might need to recode bedrooms because wtf ("to get the actual number of bedrooms, users must subtract 1 from the value of BEDROOMS")
+#pernum == 1 is the "head of household" but we will probably have to create many new variables to account for differences across households. can drop pernum after creating those variables.
+# stopping at relate for now, we've reached the person-level variables and need to figure out how to transform them
+
+
+# half-baked ideas: proportion of household that is female, mean age of household, number of adults in household, proportion of household that is white, proportion of household that is hispanic, marital status of head of household (hhtype includes a summary of the structure of the household so hopefully that's fine), proportion of citizens in household, race of the head of household, number or percentage with health insurance coverage, average educational attainment among adults in household, number of adults employed in household, 
+# confirm there is a variable that is just the number of people in the household
+
+
+data |>
+  count(ownershpd == 22 & hhincome <= 0)
+
+data |>
+  count(bedrooms)
+
+  min(data$hhincome)
+```
+
+## Models
+
+```{r}
+#This is where we'll create a recipe or two for our outcome variables. One will use the dummy as the outcome and drop the factor, and the other will use the factor as the outcome and drop the dummy. I think in the above section, after creating these two variables, we should drop the rent variable and the household income variable because we want to predict rent burden and if we had that information we'd just be able to predict it.
+
+```
+
+## Analysis
+
+```{r}
+
+```
+
+## Findings/Results
+
+## Conclusions and Recommendations
