@@ -36,16 +36,16 @@ library(rpart.plot)
 library(vip)
 library(haven)
 
-data <- read_dta("ACS_extract.dta")
+data <- read_dta("data/ACS_extract.dta")
 acs2023 <- data |>
   filter(ownershpd == 22 & hhincome > 0) |> #keep those who rent "with cash" and those with positive household income
-  select(-cbserial, -year, -sample, -gq, -ownershp, -ownershpd, -multigend, -perwt, -raced, -hispand)
+  select(-cbserial, -year, -sample, -gq, -ownershp, -ownershpd, -multgend, -perwt, -related, -raced, -hispand, empstatd)
 
 #Note: we have information on county fips but that's useless without the state fips added. Also, ACS apparently doesn't report on all counties so i'm not sure how useful it would be to create that new variable anyway. Just checked and i think there's enough variation that we can create a state/county fips variable and drop the countyfip once it's done since it's useless alone.
 
 #it seems like population density is more helpful for saying where a person is because people with the same state-county fips have the same population density
 #make note of unordered categorical variables
-  # hhtype, cbhhtype, region, statefip, countyfip, metro, city, multigend (might want to drop this), 
+  # hhtype, cbhhtype, region, statefip, countyfip, metro, city, multigend (might want to drop this), sex, marst, race, hispan, citizen, hcovany, educ, empstat, 
 #how to use strata and cluster?
 # might want to create an overcrowded variable which represents if there are less bedrooms in the household than the number of adults, but might not be necessary
 # might need to recode bedrooms because wtf ("to get the actual number of bedrooms, users must subtract 1 from the value of BEDROOMS")
@@ -56,14 +56,13 @@ acs2023 <- data |>
 # half-baked ideas: proportion of household that is female, mean age of household, number of adults in household, proportion of household that is white, proportion of household that is hispanic, marital status of head of household (hhtype includes a summary of the structure of the household so hopefully that's fine), proportion of citizens in household, race of the head of household, number or percentage with health insurance coverage, average educational attainment among adults in household, number of adults employed in household, 
 # confirm there is a variable that is just the number of people in the household
 
+acs_household <- acs2023 |>
+  group_by(serial) |>
+  summarise(prop_female = mean(sex == 2, na.rm = TRUE),
+            mean_age = mean(age, na.rm = TRUE),
+            prop_adult = mean(age >= 18, na.rm = TRUE))
 
-data |>
-  count(ownershpd == 22 & hhincome <= 0)
-
-data |>
-  count(bedrooms)
-
-  min(data$hhincome)
+#the above code is taking forever to run for me, can someone check to see if it works?
 ```
 
 ## Models
