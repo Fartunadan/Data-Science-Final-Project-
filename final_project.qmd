@@ -9,19 +9,38 @@ execute:
 editor: visual
 ---
 
-# Topic: Rent burden
+# Rent Burden in America
 
-## Problem: [Renters’ Affordability Challenges Worsened Last Year](https://www.jchs.harvard.edu/blog/renters-affordability-challenges-worsened-last-year)
+```{r}
+#| message: false
+#| warning: false
+#| echo: false # how do I hide this code?
+knitr::include_graphics("image01.avif")
+```
 
--   “The number of cost-burdened renter households hit yet another record high from 2021-2023”
--   “In 2023, the number of renter households spending more than 30 percent of their incomes on rent and utilities hit an all-time high of 22.6 million.”
--   “This included a record-high 12.1 million severely burdened households that spent more than half of their incomes on housing costs.” Nearly Half of Renter Households Are Cost-Burdened, Proportions Differ by Race Justifying the importance of this model
-    -   Nearly Half of Renter Households Are Cost-Burdened, Proportions Differ by Race (https://www.census.gov/newsroom/press-releases/2024/renter-households-cost-burdened-race.html)
-    -   Justifying the importance of this model
+## Problem Statement:
 
-## Research question:
+Housing affordability has reached a critical juncture for American renters.
 
-Can we develop a model that adequately predicts a household's rent burden status using socioeconomic and demographic characteristics? Which variables are the most important in predicting the extent to which a household is rent burdened?
+-   Between 2021 and 2023, the number of cost-burdened renter households those spending more than 30% of their income on rent and utilities climbed to an unprecedented 22.6 million, with 12.1 million households severely burdened by spending over half their income on housing.
+
+-   Nearly half of all renter households now face cost burden, and these impacts fall disproportionately across racial lines, exacerbating existing inequalities.
+
+This escalating crisis threatens not only individual financial stability but also broader economic health, as families sacrifice spending on healthcare, education, and savings to maintain shelter. Understanding the drivers and patterns of rent burden is essential for policymakers, housing advocates, and community planners to develop targeted interventions. A predictive model addressing rent burden can identify at-risk populations, forecast future trends, and inform evidence-based policies to prevent millions more households from falling into financial precarity. Without such tools, responses remain reactive rather than preventive, leaving vulnerable communities increasingly exposed to housing instability and its cascading consequences.
+
+## Research Question: Predicting Household Rent Burden
+
+**Primary Research Question:** Can we develop a model that adequately predicts a household's rent burden status using socioeconomic and demographic characteristics?
+
+**Secondary Research Question:** Which variables are the most important in predicting the extent to which a household is rent burdened?
+
+*Model Development:*
+
+-   What combination of socioeconomic and demographic factors best predicts rent burden status?
+
+-   How accurately can we classify households into burden categories (not burdened, burdened, severely burdened)?
+
+-   Which modeling approaches (Linear regression, decision tree, random forest, etc.) provide optimal predictive performance?
 
 ## Data
 
