@@ -79,7 +79,24 @@ acs_household <- acs2023 |>
   group_by(serial) |>
   summarise(prop_female = mean(sex == 2, na.rm = TRUE),
             mean_age = mean(age, na.rm = TRUE),
-            prop_adult = mean(age >= 18, na.rm = TRUE))
+            prop_adult = mean(age >= 18, na.rm = TRUE),
+            prop_white = mean(race == 1, na.rm = TRUE),
+            prop_black = mean(race == 2, na.rm = TRUE),
+            prop_ai_an = mean(race == 3, na.rm = TRUE),
+            prop_asian = mean(race == 4| race == 5| race == 6, na.rm = TRUE),
+            prop_hispanic = mean(hispan >0 & hispan < 9, na.rm = TRUE),
+            prop_citizen = mean(citizen == 0 | citizen == 1| citizen == 2, na.rm = TRUE),
+            prop_healthcare = mean(hcovany == 2, na.rm = TRUE),
+            prop_hsgrad = sum(educd >= 62 & age >= 18, na.rm = TRUE) / sum(age >=18), 
+            prop_colgrad = sum(educd >= 101 & age >= 18, na.rm = TRUE) / sum(age >=18),
+            prop_empstat = sum (empstat == 1  & age >= 16, na.rm = TRUE)/ sum(age >=16),
+            total_hrs = sum(uhrswork, na.rm = TRUE))
+
+
+#Next steps: merge to 
+
+
+#create rent burden variables 
 
 #the above code is taking forever to run for me, can someone check to see if it works?
 ```
@@ -88,6 +105,24 @@ acs_household <- acs2023 |>
 
 ```{r}
 #This is where we'll create a recipe or two for our outcome variables. One will use the dummy as the outcome and drop the factor, and the other will use the factor as the outcome and drop the dummy. I think in the above section, after creating these two variables, we should drop the rent variable and the household income variable because we want to predict rent burden and if we had that information we'd just be able to predict it.
+
+#setseed
+#split data to training and testing (default)
+#recipe:
+  #think of steps to include in the recipe
+
+#model 1: Decision tree w/ dummy variable : 3 hyper parameters(cost complexity, treedepth,min n  )
+
+#Model 2: Decision tree w/ factor variable 
+
+
+#model 3: Either Lasso or elastic net ; justify reason for model
+# tune for penalty -- suggesting elastic net 
+
+
+
+
+
 
 ```
 
