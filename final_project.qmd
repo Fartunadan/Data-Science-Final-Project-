@@ -58,47 +58,62 @@ library(haven)
 data <- read_dta("data/ACS_extract.dta")
 acs2023 <- data |>
   filter(ownershpd == 22 & hhincome > 0) |> #keep those who rent "with cash" and those with positive household income
-  select(-cbserial, -year, -sample, -gq, -ownershp, -ownershpd, -multgend, -perwt, -related, -raced, -hispand, empstatd)
+  select(-cbserial, -year, -sample, -gq, -ownershp, -ownershpd, -multgend, -perwt, -related, -raced, -hispand, -empstatd) |>
+  filter(statefip == 12)
 
-#Note: we have information on county fips but that's useless without the state fips added. Also, ACS apparently doesn't report on all counties so i'm not sure how useful it would be to create that new variable anyway. Just checked and i think there's enough variation that we can create a state/county fips variable and drop the countyfip once it's done since it's useless alone.
+#creating new household level variables based on composition
 
-#it seems like population density is more helpful for saying where a person is because people with the same state-county fips have the same population density
-#make note of unordered categorical variables
-  # hhtype, cbhhtype, region, statefip, countyfip, metro, city, multigend (might want to drop this), sex, marst, race, hispan, citizen, hcovany, educ, empstat, 
-#how to use strata and cluster?
-# might want to create an overcrowded variable which represents if there are less bedrooms in the household than the number of adults, but might not be necessary
-# might need to recode bedrooms because wtf ("to get the actual number of bedrooms, users must subtract 1 from the value of BEDROOMS")
-#pernum == 1 is the "head of household" but we will probably have to create many new variables to account for differences across households. can drop pernum after creating those variables.
-# stopping at relate for now, we've reached the person-level variables and need to figure out how to transform them
-
-
-# half-baked ideas: proportion of household that is female, mean age of household, number of adults in household, proportion of household that is white, proportion of household that is hispanic, marital status of head of household (hhtype includes a summary of the structure of the household so hopefully that's fine), proportion of citizens in household, race of the head of household, number or percentage with health insurance coverage, average educational attainment among adults in household, number of adults employed in household, 
-# confirm there is a variable that is just the number of people in the household
-
-acs_household <- acs2023 |>
+acs2023 <- acs2023 |>
   group_by(serial) |>
-  summarise(prop_female = mean(sex == 2, na.rm = TRUE),
-            mean_age = mean(age, na.rm = TRUE),
-            prop_adult = mean(age >= 18, na.rm = TRUE),
-            prop_white = mean(race == 1, na.rm = TRUE),
+  mutate(prop_female = mean(sex == 2, na.rm = TRUE),
+         mean_age = mean(age, na.rm = TRUE),
+         prop_adult = mean(age >= 18, na.rm = TRUE),
+         prop_healthcare = mean(hcovany == 2, na.rm = TRUE))|>
+  ungroup()
+         
+acs2023 <- acs2023 |>
+  group_by(serial) |>
+  mutate(prop_white = mean(race == 1, na.rm = TRUE),
             prop_black = mean(race == 2, na.rm = TRUE),
             prop_ai_an = mean(race == 3, na.rm = TRUE),
-            prop_asian = mean(race == 4| race == 5| race == 6, na.rm = TRUE),
-            prop_hispanic = mean(hispan >0 & hispan < 9, na.rm = TRUE),
-            prop_citizen = mean(citizen == 0 | citizen == 1| citizen == 2, na.rm = TRUE),
-            prop_healthcare = mean(hcovany == 2, na.rm = TRUE),
-            prop_hsgrad = sum(educd >= 62 & age >= 18, na.rm = TRUE) / sum(age >=18), 
-            prop_colgrad = sum(educd >= 101 & age >= 18, na.rm = TRUE) / sum(age >=18),
-            prop_empstat = sum (empstat == 1  & age >= 16, na.rm = TRUE)/ sum(age >=16),
-            total_hrs = sum(uhrswork, na.rm = TRUE))
+            prop_asian = mean(race == 4| race == 5| race == 6, na.rm = TRUE)) |>
+  ungroup()
 
+acs2023 <- acs2023 |>
+  group_by(serial) |>
+  mutate(prop_hispanic = mean(hispan >0 & hispan < 9, na.rm = TRUE),
+         prop_citizen = mean(citizen == 0 | citizen == 1| citizen == 2, na.rm = TRUE),
+         prop_hsgrad = sum(educd >= 62 & age >= 18, na.rm = TRUE) / sum(age >=18), 
+         prop_colgrad = sum(educd >= 101 & age >= 18, na.rm = TRUE) / sum(age >=18)) |>
+  ungroup()
 
-#Next steps: merge to 
+acs2023 <- acs2023 |>
+  group_by(serial) |>
+  mutate(prop_empstat = sum (empstat == 1  & age >= 16, na.rm = TRUE)/ sum(age >=16),
+         total_hrs = sum(uhrswork, na.rm = TRUE)) |>
+  ungroup()
 
+# getting the data to the household level now and creating rent burden variables
+acs_household <- acs2023 |>
+  filter(relate == 1) |>
+  select(-relate, -sex, -age, -race, -hispan, -citizen, -hcovany, -empstat, -uhrswork) |>
+  mutate(rent_income = (rentgrs*12)/hhincome,
+         rent_burden = if_else(rent_income > .3, 1, 0),
+         rent_burdend = case_when(
+           rent_income > .5 ~ "extremely rent burdened",
+           rent_income > .3 ~ "rent burdened",
+           rent_income <= .3 ~ "not rent burdened"
+         ),
+         rent_burdend = factor(rent_burdend, levels = c("not rent burdened", "rent burdened", "extremely rent burdened"), ordered = TRUE))
 
-#create rent burden variables 
+acs_household |>
+  count(rent_burdend)
+#next steps:
+#convert remaining categorical variables to unordered factors?
+#hhtype, cbhhtype, region, statefip, countyfip, metro, city, marst, educ
+# might need to recode bedrooms because wtf ("to get the actual number of bedrooms, users must subtract 1 from the value of BEDROOMS")
+#get rid of the rent_income, grsrent, hhincome variables before we can split into training and testing
 
-#the above code is taking forever to run for me, can someone check to see if it works?
 ```
 
 ## Models
@@ -129,7 +144,7 @@ acs_household <- acs2023 |>
 ## Analysis
 
 ```{r}
-
+length(unique(acs2023$serial))
 ```
 
 ## Findings/Results
