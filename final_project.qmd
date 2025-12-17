@@ -14,7 +14,7 @@ editor: visual
 ```{r}
 #| message: false
 #| warning: false
-#| echo: false # how do I hide this code?
+#| echo: false 
 knitr::include_graphics("image01.avif")
 ```
 
@@ -108,11 +108,14 @@ acs_household <- acs2023 |>
 
 acs_household |>
   count(rent_burdend)
-#next steps:
-#convert remaining categorical variables to unordered factors?
-#hhtype, cbhhtype, region, statefip, countyfip, metro, city, marst, educ
-# might need to recode bedrooms because wtf ("to get the actual number of bedrooms, users must subtract 1 from the value of BEDROOMS")
-#get rid of the rent_income, grsrent, hhincome variables before we can split into training and testing
+
+acs_household <- acs_household |>
+  mutate(across(c(hhtype, cbhhtype, countyfip, metro, city, marst), ~ factor(.x, ordered = FALSE)),
+         educd = factor(educd, ordered = TRUE))
+
+
+acs_florida <- acs_household |>
+  select(-rent_income, -rentgrs, -hhincome)
 
 ```
 
@@ -121,8 +124,43 @@ acs_household |>
 ```{r}
 #This is where we'll create a recipe or two for our outcome variables. One will use the dummy as the outcome and drop the factor, and the other will use the factor as the outcome and drop the dummy. I think in the above section, after creating these two variables, we should drop the rent variable and the household income variable because we want to predict rent burden and if we had that information we'd just be able to predict it.
 
-#setseed
-#split data to training and testing (default)
+# a) split the data into training and testing sets 
+
+set.seed(30061825)
+
+florida_split <- initial_split(data = acs_florida, prop = 0.75)
+# might need to add strata and cluster, waiting on Aaron
+
+florida_train <- training(x = florida_split)
+
+florida_test <- testing(x = florida_split)
+
+#INSERT EXPLORATORY DATA ANALYSIS OF TRAINING DATA. AT LEAST TWO VISUALIZATIONS
+#florida_train |>
+#  ggplot(aes(x = rent_burden, y = )) +
+#  geom_col(color = "blue") +
+#  labs(title = "Exploratory Data Analysis of Ridership by Day of the Week") +
+#  theme_minimal()
+
+florida_folds <- vfold_cv(data = florida_train, v = 5, repeats = 1)
+
+dummy_rec <- recipe(rent_burden ~ ., data = florida_train) |>
+  step_rm(rent_burdend) |>
+  step_nzv(all_predictors()) |>
+  step_normalize(all_numeric_predictors()) |>
+  step_corr(all_integer_predictors()) |>
+  step_dummy(all_factor_predictors())
+
+factor_rec <- recipe(rent_burdend ~ ., data = florida_train) |>
+  step_rm(rent_burden) |>
+  step_nzv(all_predictors()) |>
+  step_normalize(all_numeric_predictors()) |>
+  step_corr(all_integer_predictors()) |>
+  step_dummy(all_factor_predictors())
+
+bake(prep(dummy_rec, training = florida_train), new_data = florida_train)
+
+
 #recipe:
   #think of steps to include in the recipe
 
