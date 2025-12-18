@@ -42,7 +42,7 @@ Our targeting intervention project aims to provide an evidence based prediction 
 
 -   How accurately can we classify households into burden categories (not burdened, burdened, severely burdened)?
 
--   Which modeling approaches (Linear regression, decision tree, random forest, etc.) provide optimal predictive performance?
+-   Which modeling approaches (**Linear regression, decision tree, random forest, etc.NEED TO UPDATE**) provide optimal predictive performance?
 
 ## Data
 
@@ -119,6 +119,7 @@ acs_household <- acs_household |>
 acs_florida <- acs_household |>
   select(-rent_income, -rentgrs, -hhincome)
 
+
 ```
 
 ## Models
@@ -138,6 +139,21 @@ florida_train <- training(x = florida_split)
 florida_test <- testing(x = florida_split)
 
 #INSERT EXPLORATORY DATA ANALYSIS OF TRAINING DATA. AT LEAST TWO VISUALIZATIONS
+
+## Visualization 1: Distribution of Rent Burden (Outcome Variable)
+
+florida_train |>
+  count(rent_burdend) |>
+  ggplot(aes(x = rent_burdend, y = n, fill = rent_burdend)) +
+  geom_col() +
+  labs(
+    title = "Distribution of Rent Burden Among Florida Renter Households",
+    x = "Rent Burden Category",
+    y = "Number of Households"
+  ) +
+  theme_minimal() 
+##theme(legend.position = "none")- COULD INCLUDE IF WE WWANT TO REMOVE
+
 #florida_train |>
 #  ggplot(aes(x = rent_burden, y = )) +
 #  geom_col(color = "blue") +
@@ -171,8 +187,14 @@ bake(prep(dummy_rec, training = florida_train), new_data = florida_train)
 #Model 2: Decision tree w/ factor variable 
 
 
-#model 3: Either Lasso or elastic net ; justify reason for model
+#model 3: Elastic net ; justify reason for model
 # tune for penalty -- suggesting elastic net 
+
+
+
+
+
+
 
 
 
