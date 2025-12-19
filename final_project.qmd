@@ -209,6 +209,49 @@ bake(prep(factor_rec, training = florida_train), new_data = florida_train)
 
 #model 1: Decision tree w/ dummy variable : 3 hyper parameters(cost complexity, treedepth,min n  )
 
+
+# create model w/ hyperparameters 
+dummy_mod <-
+  decision_tree(
+    cost_complexity = tune(),
+    tree_depth = tune(),
+    min_n = tune()
+  ) |>
+  set_engine(engine = "rpart") |>
+  set_mode(mode = "classification")  
+  
+# create hypertuning grid 
+florida_grid <- grid_regular(
+  cost_complexity(range = c(-5, -1)), 
+  tree_depth(range = c(3, 15)), 
+  min_n(),
+  levels = 10
+)
+
+florida_grid 
+  
+  
+# create workflow 
+dummy_wf <- workflow() |>
+  add_recipe(dummy_rec) |>
+  add_model(dummy_mod) 
+
+# fit the model 
+florida_fit <- dummy_wf |>
+  fit(data = florida_train) #error here 
+
+# create a tree
+rpart.plot::rpart.plot(x = florida_fit$fit$fit$fit)
+
+# choose the best model 
+dummy_res <-
+  dummy_wf |>
+  tune_grid(resamples = florida_folds,
+            grid = florida_grid,
+            metrics = metric_set(precision))
+dummy_res |>
+  collect_metrics() 
+
 #Model 2: Decision tree w/ factor variable 
 
 # create a cart model object
@@ -311,6 +354,9 @@ elastic_net_coefs <- elastic_net_final %>%
   vi(lambda = elastic_net_best$penalty) 
 
 ```
+
+
+
 
 ## Analysis
 
