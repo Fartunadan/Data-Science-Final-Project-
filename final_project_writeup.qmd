@@ -1,0 +1,136 @@
+---
+title: "Rent Burden in Florida"
+author: "Daija, Fartun, Kaela"
+format: html
+embed-resources: true
+execute:
+  warning: false
+  message: false
+editor: visual
+---
+
+# Predicting Rent Burden In Florida
+
+```{r}
+#| echo: false 
+knitr::include_graphics("image01.avif")
+```
+
+## Problem Statement:
+
+Housing affordability has reached a critical juncture for American renters.
+
+-   Between 2021 and 2023, the number of cost-burdened renter households those spending more than 30% of their income on rent and utilities climbed to an unprecedented 22.6 million, with 12.1 million households severely burdened by spending over half their income on housing.
+
+-   Nearly half of all renter households now face cost burden, and these impacts fall disproportionately across racial lines, exacerbating existing inequalities.
+
+Florida residents experience particularly high levels of rent burden with a median gross rent as percentage of income at 34.5%, the highest in the country. With a statewide ban on rent stabilization, increased migration from northern states, and a housing construction market unable to keep up with demand, policymakers are preparing for even greater constraints on affordable housing by 2034. This escalating crisis threatens not only individual financial stability but also broader economic health, as families sacrifice spending on healthcare, education, and savings to maintain shelter. Understanding the drivers and patterns of rent burden is essential to proper policy and preparation.
+
+### remember to add additional detail about the visualization below
+
+```{r}
+#| echo: false 
+
+library(tidyverse)
+library(tidymodels)
+library(rpart.plot)
+library(vip)
+library(haven)
+library(dotenv)
+library(tidycensus)
+
+load_dot_env()
+
+credential <- Sys.getenv("census_api_key")
+
+get_acs(
+  geography = "county",
+  variables = "B25071_001E",
+    geometry = TRUE,
+    year = 2023,
+    output = "wide",
+    state = 12,
+    key = credential) |>
+ggplot() +
+  geom_sf(mapping = aes(fill = B25071_001E)) +
+  scale_fill_gradient(
+    low = "lightyellow",
+    high = "darkred",
+    name = "Median Rent as % of Income"
+  ) +
+  labs(title = "Median Rent as a % of Household Income in Florida by County, 2023") +
+  theme_void()
+
+```
+
+Based on the visualization above, you can see...
+
+Therefore, our targeting intervention project aims to provide an evidence based prediction tool to support resource allocation decision making at county and state levels. A predictive model addressing rent burden can identify at-risk populations and forecast future trends to inform policies that prevent more households from falling into financial precarity. Without such tools, Florida's responses will remain reactive rather than preventive, leaving vulnerable communities increasingly exposed to housing instability and its cascading consequences.
+
+## Research Question: Predicting Household Rent Burden
+
+**Primary Research Question:** Can we develop a model that adequately predicts a household's rent burden status using socioeconomic and demographic characteristics?
+
+**Secondary Research Question:** Which variables are the most important in predicting the extent to which a household is rent burdened?
+
+*Model Development:*
+
+-   What combination of socioeconomic and demographic factors best predicts rent burden status?
+
+-   How accurately can we classify households into burden categories (not burdened, burdened, severely burdened)?
+
+-   Which modeling approaches (decision tree or elastic net) provide optimal predictive performance?
+
+## Data
+
+The data were pulled from the IPUMS ACS 2023 microdata and the sample is limited to individuals that indicated they rent their dwelling and have positive household income. We collapsed the data to the household level by generating variables describing the demographic and socioeconomic composition of the household. Additionally, we included household level variables on geography, population density, number of rooms, 
+
+*describe dataset and changes made to the data.
+
+## Model Selection
+
+We decided to create three different models, a decision tree with a binary outcome variable, a decision tree with a three level factor variable, and a parametric classification model. For the third model, we developed an Elastic Net model to predict rent burden among Florida renter households. The model combines L1 (lasso) and L2 (ridge) regularization to handle multicollinearity and select important features. We chose an elastic net model due to its ability to perform well with datasets that have multicollinearity and a mix of categorical and numeric variables.
+
+*describe process of splitting data into training and testing and then discuss how the training data look by describing the two data visualizations*
+
+```{r}
+#| echo: false 
+
+set.seed(30061825)
+
+florida_split <- initial_split(data = acs_florida, prop = 0.75)
+
+florida_train <- training(x = florida_split)
+florida_test <- testing(x = florida_split)
+
+#INSERT EXPLORATORY DATA ANALYSIS OF TRAINING DATA. AT LEAST TWO VISUALIZATIONS
+
+## Visualization 1: Distribution of Rent Burden (Outcome Variable)
+
+florida_train |>
+  count(rent_burdend) |>
+  ggplot(aes(x = rent_burdend, y = n, fill = rent_burdend)) +
+  geom_col() +
+  labs(
+    title = "Distribution of Rent Burden Among Florida Renter Households",
+    x = "Rent Burden Category",
+    y = "Number of Households"
+  ) +
+  theme_minimal() 
+```
+
+
+* Model 1 
+
+
+* Model 2
+
+
+* Model 3 
+
+
+* Analysis of best model
+* variable importance and compare accuracy and precision on testing data to training data (Daija's model) 
+
+Conclusion and Recommendations
+
