@@ -12,8 +12,6 @@ editor: visual
 # Rent Burden in America
 
 ```{r}
-#| message: false
-#| warning: false
 #| echo: false 
 knitr::include_graphics("image01.avif")
 ```
@@ -27,6 +25,41 @@ Housing affordability has reached a critical juncture for American renters.
 -   Nearly half of all renter households now face cost burden, and these impacts fall disproportionately across racial lines, exacerbating existing inequalities.
 
 Florida residents experience particularly high levels of rent burden with a median gross rent as percentage of income at 34.5%, the highest in the country. With a statewide ban on rent stabilization, increased migration from northern states, and a housing construction market unable to keep up with demand, policymakers are preparing for even greater constraints on affordable housing by 2034. This escalating crisis threatens not only individual financial stability but also broader economic health, as families sacrifice spending on healthcare, education, and savings to maintain shelter. Understanding the drivers and patterns of rent burden is essential to proper policy and preparation.
+
+```{r}
+#| echo: false 
+
+library(tidyverse)
+library(tidymodels)
+library(rpart.plot)
+library(vip)
+library(haven)
+library(dotenv)
+library(tidycensus)
+
+load_dot_env()
+
+credential <- Sys.getenv("census_api_key")
+
+get_acs(
+  geography = "county",
+  variables = "B25071_001E",
+    geometry = TRUE,
+    year = 2023,
+    output = "wide",
+    state = 12,
+    key = credential) |>
+ggplot() +
+  geom_sf(mapping = aes(fill = B25071_001E)) +
+  scale_fill_gradient(
+    low = "lightyellow",
+    high = "darkred",
+    name = "Median Rent as % of Income"
+  ) +
+  labs(title = "Median Rent as a % of Household Income in Florida by County, 2023") +
+  theme_void()
+
+```
 
 Our targeting intervention project aims to provide an evidence based prediction tool to support resource allocation decision making at county and state levels. A predictive model addressing rent burden can identify at-risk populations and forecast future trends to inform policies that prevent more households from falling into financial precarity. Without such tools, Florida's responses will remain reactive rather than preventive, leaving vulnerable communities increasingly exposed to housing instability and its cascading consequences.
 
@@ -46,24 +79,18 @@ Our targeting intervention project aims to provide an evidence based prediction 
 
 ## Data
 
-The data were pulled from the IPUMS ACS 2023 microdata and the sample is limited to individuals that indicated they rent their dwelling. The dataset needs to be collapsed so that the unit of observation is the household.
+The data were pulled from the IPUMS ACS 2023 microdata and the sample is limited to individuals that indicated they rent their dwelling and have positive household income. We collapsed the data to the household level by generating variables describing the demographic and socioeconomic composition of the household. Additionally, we included household level variables on geography, population density, number of rooms, 
 
 ```{r}
-#Note: in this section, we need to clean the dataset, collapse it to the household level and then separate it into training and testing data. Then, we can do 2-3 visuals for exploratory data analysis.
-
-library(tidyverse)
-library(tidymodels)
-library(rpart.plot)
-library(vip)
-library(haven)
+#Note: we need to separate this part into a cleaning script that writes a .csv that we then use for the modeling section
 
 data <- read_dta("data/ACS_extract.dta")
 acs2023 <- data |>
   filter(ownershpd == 22 & hhincome > 0) |> #keep those who rent "with cash" and those with positive household income
-  select(-cbserial, -year, -sample, -gq, -ownershp, -ownershpd, -multgend, -perwt, -related, -raced, -hispand, -empstatd) |>
-  filter(statefip == 12)
+  select(-cbserial, -year, -sample, -gq, -ownershp, -ownershpd, -multgend, -perwt, -related, -raced, -hispand, -empstatd, -strata, -cluster) |> #drop unnecessary variables
+  filter(statefip == 12) # filter to Florida
 
-#creating new household level variables based on composition
+#creating new household level variables based on household composition, broken up for ease of processing
 
 acs2023 <- acs2023 |>
   group_by(serial) |>
@@ -95,27 +122,26 @@ acs2023 <- acs2023 |>
          total_hrs = sum(uhrswork, na.rm = TRUE)) |>
   ungroup()
 
-# getting the data to the household level now and creating rent burden variables
+# getting the data to the household level, creating rent burden variables, and designating the weight variable
+
 acs_household <- acs2023 |>
   filter(relate == 1) |>
   select(-relate, -sex, -age, -race, -hispan, -citizen, -hcovany, -empstat, -uhrswork) |>
   mutate(rent_income = (rentgrs*12)/hhincome,
          rent_burden = if_else(rent_income > .3, 1, 0),
          rent_burdend = case_when(
-           rent_income > .5 ~ "extremely rent burdened",
+           rent_income > .5 ~ "severely rent burdened",
            rent_income > .3 ~ "rent burdened",
            rent_income <= .3 ~ "not rent burdened"
          ),
-         rent_burdend = factor(rent_burdend, levels = c("not rent burdened", "rent burdened", "extremely rent burdened"), ordered = TRUE))
-
-acs_household |>
-  count(rent_burdend)
+         rent_burdend = factor(rent_burdend, levels = c("severely rent burdened", "rent burdened", "not rent burdened"), ordered = TRUE))
 
 acs_household <- acs_household |>
   mutate(across(c(hhtype, cbhhtype, countyfip, metro, city, marst), ~ factor(.x, ordered = FALSE)),
-         educd = factor(educd, ordered = TRUE))
+         educd = factor(educd, ordered = TRUE),
+         hhwt = frequency_weights(hhwt))
 
-
+# removing variables used to generate our outcome
 acs_florida <- acs_household |>
   select(-rent_income, -rentgrs, -hhincome)
 
@@ -126,17 +152,13 @@ acs_florida <- acs_household |>
 ## Models
 
 ```{r}
-#This is where we'll create a recipe or two for our outcome variables. One will use the dummy as the outcome and drop the factor, and the other will use the factor as the outcome and drop the dummy. I think in the above section, after creating these two variables, we should drop the rent variable and the household income variable because we want to predict rent burden and if we had that information we'd just be able to predict it.
-
-# a) split the data into training and testing sets 
+# split the data into training and testing sets 
 
 set.seed(30061825)
 
 florida_split <- initial_split(data = acs_florida, prop = 0.75)
-# might need to add strata and cluster, waiting on Aaron
 
 florida_train <- training(x = florida_split)
-
 florida_test <- testing(x = florida_split)
 
 #INSERT EXPLORATORY DATA ANALYSIS OF TRAINING DATA. AT LEAST TWO VISUALIZATIONS
@@ -162,12 +184,14 @@ florida_train |>
 
 florida_folds <- vfold_cv(data = florida_train, v = 5, repeats = 1)
 
+
+# create a recipe for each outcome variable
 dummy_rec <- recipe(rent_burden ~ ., data = florida_train) |>
   step_rm(rent_burdend) |>
   step_nzv(all_predictors()) |>
   step_normalize(all_numeric_predictors()) |>
   step_corr(all_integer_predictors()) |>
-  step_dummy(all_factor_predictors())
+  step_dummy(all_nominal_predictors())
 
 factor_rec <- recipe(rent_burdend ~ ., data = florida_train) |>
   step_rm(rent_burden) |>
@@ -187,6 +211,60 @@ bake(prep(factor_rec, training = florida_train), new_data = florida_train)
 
 #Model 2: Decision tree w/ factor variable 
 
+# create a cart model object
+
+factor_dt_mod <-
+  decision_tree(
+    cost_complexity = tune(),
+    tree_depth = tune(),
+    min_n = tune()
+  ) |>
+  set_engine(engine = "rpart") |>
+  set_mode(mode = "classification")
+
+factor_dt_grid <- grid_regular(
+  cost_complexity(range = c(-5, -1)), 
+  tree_depth(range = c(3, 15)), 
+  min_n(),
+  levels = 2
+)
+
+factor_dt_workflow <-
+  workflow() |>
+  add_recipe(factor_rec) |>
+  add_model(factor_dt_mod) |>
+  add_case_weights(hhwt)
+  
+# fit the model
+factor_dt_res <-
+  factor_dt_workflow |>
+  tune_grid(resamples = florida_folds,
+            grid = factor_dt_grid,
+            metrics = metric_set(accuracy, precision))
+
+fdt_best <- factor_dt_res |>
+  select_best(metric = "precision")
+
+fdt_final_wf <- 
+  factor_dt_workflow |> 
+  finalize_workflow(select_best(factor_dt_res, metric = "precision"))
+
+fdt_fit <- fit(fdt_final_wf, data = florida_train)
+
+# create a tree
+rpart.plot::rpart.plot(x = fdt_fit$fit$fit$fit)
+
+# predict the predicted class and the predicted probability of each class
+predictions <- bind_cols(
+  florida_train,
+  predict(object = fdt_fit, new_data = florida_train),
+  predict(object = fdt_fit, new_data = florida_train, type = "prob")
+)
+
+conf_mat(data = predictions,
+         truth = rent_burdend,
+         estimate = .pred_class,
+         case_weights = hhwt)
 
 #model 3: Elastic net ; justify reason for model
 # tune for penalty -- suggesting elastic net 
@@ -237,7 +315,7 @@ elastic_net_coefs <- elastic_net_final %>%
 ## Analysis
 
 ```{r}
-length(unique(acs2023$serial))
+
 ```
 
 ## Findings/Results
