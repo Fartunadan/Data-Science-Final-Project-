@@ -152,45 +152,37 @@ florida_train |>
 
 We decided to create three different models, a decision tree with a binary outcome variable, a decision tree with a three level factor variable, and a parametric classification model. [Include justification for decision tree]. For the third model, we developed an Elastic Net model to predict rent burden among Florida renter households. The model combines L1 (lasso) and L2 (ridge) regularization to handle multicollinearity and select important features. We chose an elastic net model due to its ability to perform well with datasets that have multicollinearity and a mix of categorical and numeric variables.
 
-*describe process of splitting data into training and testing and then discuss how the training data look by describing the two data visualizations*
-
-```{r}
-#| echo: false 
-
-set.seed(30061825)
-
-florida_split <- initial_split(data = acs_florida, prop = 0.75)
-
-florida_train <- training(x = florida_split)
-florida_test <- testing(x = florida_split)
-
-#INSERT EXPLORATORY DATA ANALYSIS OF TRAINING DATA. AT LEAST TWO VISUALIZATIONS
-
-```
-
-
-```{r}
-#| echo: false
-
-florida_train |>
-  ggplot(aes(x = mean_age, fill = factor(rent_burden))) +
-  geom_density(alpha = 0.6) +
-  scale_fill_manual(values = c("0" = "lightblue", "1" = "plum"),
-                    labels = c("0" = "not rent burdened", "1" = "rent burdened")) +
-  labs(title = "Age Distribution: Rent-Burdened vs Non-Rent-Burdened (Density)",
-       x = "Mean Household Age",
-       y = "Density",
-       fill = "Status") +
-  theme_minimal()
-```
-
 ## Model Performance
 
 -   Model 1
 
+```{r}
+#insert confusion matrix png here
+```
+
+(insert Daija's write up here)
+
+```{r}
+#insert decision tree here
+```
+
 -   Model 2
 
+```{r}
+#insert confusion matrix png here
+```
+(insert Kaela's writeup here)
+
+```{r}
+#insert decision tree here
+```
+
+
 ***Model 3:*** Elastic Net multinomial regression model
+
+```{r}
+#
+```
 
 An Elastic Net multinomial regression model was developed to classify the target variable, rent_burdend. The model was tuned by optimizing two key hyperparameters: penalty and mixture, which control the strength and balance of L1 (Lasso) and L2 (Ridge) regularization. Hyperparameter tuning was conducted using cross-validation with a grid, and model performance was evaluated using accuracy and precision. The best-performing model was selected based on precision and subsequently finalized and fitted to the full training dataset.
 
