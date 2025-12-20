@@ -156,7 +156,7 @@ The elastic net model combines L1 (lasso) and L2 (ridge) regularization to handl
 
 ## Model Performance
 
-**Model 1**
+### Model 1: Decision Tree with dummy variable
 
 ```{r}
 knitr::include_graphics("model1matrix.png")
@@ -170,7 +170,7 @@ The final model selected for this decision tree with a binary outcome variable a
 knitr::include_graphics("model1dt.png")
 ```
 
--   Model 2
+### Model 2: Decision tree with factor variable
 
 ```{r}
 knitr::include_graphics("model2matrix.png")
@@ -186,10 +186,10 @@ This issue is further illustrated in the confusion matrix, where the model never
 knitr::include_graphics("model2dt.png")
 ```
 
-***Model 3:*** Elastic Net multinomial regression model
+### Model 3: Elastic net with factor variable
 
 ```{r}
-knitr::include_graphics("model2matrix.png")
+knitr::include_graphics("modelmatrix.png")
 ```
 
 Our final model is an Elastic Net multinomial regression model, also developed to predict the three category factor variable. The model was tuned by optimizing two key hyperparameters: penalty and mixture, which control the strength and balance of L1 (Lasso) and L2 (Ridge) regularization. As above, hyperparameter tuning was conducted using cross-validation with a grid, and model performance was evaluated using precision. Once we selected the best-performing model, we finalized it and fit it to the full training data. For this model, the penalty was tuned to 0.0000000001 and the mixture was tuned to 0, suggesting that ridge was the best performing model.
