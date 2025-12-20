@@ -14,7 +14,7 @@ To determine whether we can develop a model that adequately predicts a household
 
 ## Files Directory
 
-1.  **final_project_cleaning.qmd:** This quarto file includes the data cleaning steps of the ACS extracted data to prepare our sample for predictive modeling.
+1.  \<a href- “<file:///Users/fa611/Desktop/Data%20Science%20/Data-Science-Final-Project-/final_project.html>”\>**final_project_cleaning.qmd:** This quarto file includes the data cleaning steps of the ACS extracted data to prepare our sample for predictive modeling.
 
 2.  **final_project.qmd:** This quarto file includes the code for each predictive model to predict rent-burden in Flordida using 2023 ACS data. Model 1 is a decision tree with a binary rent-burden variable. Model 2 is a decision tree with a three level factor rent-burden variable (rent burdened, not rent burdened, extremely rent burdened). Model 3 is an elastic net with factor variables.
 
@@ -28,7 +28,7 @@ To determine whether we can develop a model that adequately predicts a household
 
 7.   **model2dt.png:** Image of Model 1 decision tree
 
-8.   **model2matrix.png:**Image of Model 2 matrix
+8.   **model2matrix.png:** Image of Model 2 matrix
 
 9.   **model3matrix.png:** Image of Model 3 matrix
 
