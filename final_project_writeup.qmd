@@ -28,6 +28,7 @@ Housing affordability has reached a critical juncture for American renters.
 Florida residents experience particularly high levels of rent burden with a median gross rent as percentage of income at 34.5 percent, the highest in the country. Additionally, we can see from the map below that in some counties, the median rent as a percentage of income is upwards of 40 percent. With a statewide ban on rent stabilization, increased migration from northern states, and a housing construction market unable to keep up with demand, policymakers are preparing for even greater constraints on affordable housing by 2034. This escalating crisis threatens not only individual financial stability but also broader economic health, as families sacrifice spending on healthcare, education, and savings to maintain shelter. Understanding the drivers and patterns of rent burden is essential to proper policy and preparation.
 
 ```{r}
+#| output: false 
 library(tidyverse)
 library(tidymodels)
 library(rpart.plot)
@@ -40,7 +41,7 @@ load_dot_env()
 
 credential <- Sys.getenv("census_api_key")
 
-get_acs(
+florida <- get_acs(
   geography = "county",
   variables = "B25071_001E",
     geometry = TRUE,
@@ -58,6 +59,11 @@ ggplot() +
   labs(title = "Median Rent as a % of Household Income in Florida by County, 2023") +
   theme_void()
 
+
+```
+
+```{r}
+florida 
 ```
 
 Our targeting intervention project aims to provide an evidence based prediction tool to support resource allocation decision making at county and state levels. A predictive model addressing rent burden can identify at-risk populations and forecast future trends to inform policies that prevent more households from falling into financial precarity. Without such tools, Florida's responses will remain reactive rather than preventive, leaving vulnerable communities increasingly exposed to housing instability and its cascading consequences.
