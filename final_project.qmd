@@ -103,7 +103,7 @@ factor_rec <- recipe(rent_burdend ~ ., data = florida_train) |>
 #bake(prep(factor_rec, training = florida_train), new_data = florida_train)
 ```
 
-Model 1: Decision Tree with dummy variable
+### Model 1: Decision Tree with dummy variable
 
 ```{r}
 # create model, tuning cost complexity, tree depth, and min n 
@@ -121,7 +121,7 @@ florida_grid <- grid_regular(
   cost_complexity(range = c(-5, -1)), 
   tree_depth(range = c(3, 15)), 
   min_n(),
-  levels = 2
+  levels = 10
   )
   
 # create workflow 
@@ -180,9 +180,9 @@ precision(data = dummy_predictions,
 
 ```
 
-```{r}
-#Model 2: Decision tree w/ factor variable 
+### Model 2: Decision tree with factor variable
 
+```{r}
 # create model, tuning cost complexity, tree depth, and min n 
 
 factor_dt_mod <-
@@ -199,7 +199,7 @@ factor_dt_grid <- grid_regular(
   cost_complexity(range = c(-5, -1)), 
   tree_depth(range = c(3, 15)), 
   min_n(),
-  levels = 2
+  levels = 10
 )
 
 # create workflow 
@@ -244,25 +244,25 @@ fdt_predictions <- bind_cols(
   predict(object = fdt_fit, new_data = florida_train, type = "prob")
 )
 
-conf_mat(data = ftd_predictions,
+conf_mat(data = fdt_predictions,
          truth = rent_burdend,
          estimate = .pred_class,
          case_weights = hhwt)
 
-accuracy(data = ftd_predictions,
+accuracy(data = fdt_predictions,
          truth = rent_burdend,
          estimate = .pred_class,
          case_weights = hhwt)
 
-precision(data = ftd_predictions,
+precision(data = fdt_predictions,
          truth = rent_burdend,
          estimate = .pred_class,
          case_weights = hhwt)
 ```
 
-```{r}
-#Model 3: Elastic net
+### Model 3: Elastic net with factor variable
 
+```{r}
 # created a multinom_regression model to tune the penalty parameter
 elastic_net_mod <-multinom_reg(
   penalty = tune(),
@@ -271,7 +271,7 @@ elastic_net_mod <-multinom_reg(
   set_engine("glmnet")
 
 ## created a tuning grid for elastic net regularization,
-elastic_net_grid <- grid_regular(penalty(), mixture(), levels = 5)
+elastic_net_grid <- grid_regular(penalty(), mixture(), levels = 10)
   
 # created an elastic net workflow 
 elastic_net_wf <- workflow()  |>
@@ -330,15 +330,34 @@ precision(data = elastic_net_predictions,
          case_weights = hhwt)
 ```
 
-
+### Applying the Best Model to Testing Data
 
 ```{r}
-#----
+testing_predictions <- bind_cols(
+  florida_test,
+  predict(object = dummy_fit, new_data = florida_test))
 
-#[ KEEP IF WE WANT TO  extract coefficients]
+conf_mat(data = testing_predictions,
+         truth = rent_burden,
+         estimate = .pred_class,
+         case_weights = hhwt)
 
-#elastic_net_coefs <- elastic_net_final %>%
-#  fit(data =florida_train) %>%
-#  extract_fit_parsnip() %>%
-#  vi(lambda = elastic_net_best$penalty)
+accuracy(data = testing_predictions,
+         truth = rent_burden,
+         estimate = .pred_class,
+         case_weights = hhwt)
+
+precision(data = testing_predictions,
+         truth = rent_burden,
+         estimate = .pred_class,
+         case_weights = hhwt)
+```
+
+### Exploring Variable Importance
+
+```{r}
+dummy_fit |>
+extract_fit_parsnip() |>
+vip(num_features = 10)
+
 ```
