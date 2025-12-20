@@ -13,7 +13,7 @@ editor: visual
 
 ## Model Creation
 
-Read in the cleaned ACS data
+**Read in the cleaned ACS data**
 
 ```{r}
 library(tidyverse)
@@ -31,7 +31,7 @@ acs_florida <- acs_florida |>
          rent_burdend = factor(rent_burdend, levels = c("severely rent burdened", "rent burdened", "not rent burdened"), ordered = TRUE))
 ```
 
-Split the data into training and testing sets
+**Split the data into training and testing sets**
 
 ```{r}
 set.seed(30061825)
@@ -43,7 +43,7 @@ florida_test <- testing(x = florida_split)
 
 ```
 
-Data Exploration - Training Data
+**Data Exploration - Training Data**
 
 ```{r}
 
@@ -59,6 +59,7 @@ florida_train |>
   theme_minimal() +
   theme(legend.position = "none")
 ```
+
 The bar chart shows the distribution of rent burden categories among Florida renter households in the training data set. The largest group consists of households that are not rent burdened, indicating that a substantial portion of renters spend less than 30% of their income on housing. However, a considerable number of households fall into the rent burdened and extremely rent burdened categories, with the extremely rent burdened group slightly larger than the rent burdened group. This distribution highlights that housing affordability is a significant issue for many renters in Florida and suggests a meaningful class imbalance that should be considered when modeling rent burden outcomes.
 
 ```{r}
@@ -74,15 +75,17 @@ florida_train |>
   theme_minimal()
 ```
 
-(insert brief description)
+This density plot shows the distribution of mean household age among rent-burdened and non-rent-burdened households in Florida, 2023. Both distributions are right skewed with peaks in around age 25 and later between ages 60 and 70. We see a high concentration of younger households in the rental market and proportional overlap between the curves across all ages, suggesting that age alone does not differentiate between those households that are rent-burdened and those that are not. There is a notable difference between the second peaks of the two curves, where rent-burdened households are more concentrated around the age of 65 than non-rent burdened households. This aligns with expectations given the older demographic of Florida retirees that rely on fixed income. 
 
-set up vfolds for cross validation
+Overall, the density curves reveal that rent-burdened and not rent-burdened households follow similar age distributions, suggesting age alone does not differentiate between rent-burdened and not.
+
+**Set up vfolds for cross validation**
 
 ```{r}
 florida_folds <- vfold_cv(data = florida_train, v = 5, repeats = 1)
 ```
 
-create a recipe for each outcome variable
+**Create a recipe for each outcome variable**
 
 ```{r}
 dummy_rec <- recipe(rent_burden ~ ., data = florida_train) |>
@@ -99,8 +102,6 @@ factor_rec <- recipe(rent_burdend ~ ., data = florida_train) |>
   step_normalize(all_numeric_predictors()) |>
   step_corr(all_integer_predictors())
 
-#bake(prep(dummy_rec, training = florida_train), new_data = florida_train)
-#bake(prep(factor_rec, training = florida_train), new_data = florida_train)
 ```
 
 ### Model 1: Decision Tree with dummy variable
@@ -121,7 +122,7 @@ florida_grid <- grid_regular(
   cost_complexity(range = c(-5, -1)), 
   tree_depth(range = c(3, 15)), 
   min_n(),
-  levels = 10
+  levels = 5
   )
   
 # create workflow 
@@ -143,7 +144,6 @@ dummy_best <- dummy_res |>
 dummy_best
 ```
 
-
 ```{r}
 dummy_final_wf <- 
   dummy_wf |> 
@@ -154,7 +154,6 @@ dummy_fit <- fit(dummy_final_wf, data = florida_train)
 # create a tree
 rpart.plot::rpart.plot(x = dummy_fit$fit$fit$fit)
 ```
-
 
 ```{r}
 dummy_predictions <- bind_cols(
@@ -199,7 +198,7 @@ factor_dt_grid <- grid_regular(
   cost_complexity(range = c(-5, -1)), 
   tree_depth(range = c(3, 15)), 
   min_n(),
-  levels = 10
+  levels = 5
 )
 
 # create workflow 
@@ -222,7 +221,6 @@ fdt_best <- factor_dt_res |>
 fdt_best
 ```
 
-
 ```{r}
 fdt_final_wf <- 
   factor_dt_workflow |> 
@@ -233,7 +231,6 @@ fdt_fit <- fit(fdt_final_wf, data = florida_train)
 # create a tree
 rpart.plot::rpart.plot(x = fdt_fit$fit$fit$fit)
 ```
-
 
 ```{r}
 # predict the predicted class and the predicted probability of each class
@@ -271,7 +268,7 @@ elastic_net_mod <-multinom_reg(
   set_engine("glmnet")
 
 ## created a tuning grid for elastic net regularization,
-elastic_net_grid <- grid_regular(penalty(), mixture(), levels = 10)
+elastic_net_grid <- grid_regular(penalty(), mixture(), levels = 5)
   
 # created an elastic net workflow 
 elastic_net_wf <- workflow()  |>
@@ -294,7 +291,6 @@ elastic_net_best <- elastic_net_cv |>
 
 elastic_net_best
 ```
-
 
 ```{r}
 # finalize workflow with  elastic net workflow and the best model 
