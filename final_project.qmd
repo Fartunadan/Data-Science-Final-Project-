@@ -79,7 +79,7 @@ Our targeting intervention project aims to provide an evidence based prediction 
 
 ## Data
 
-The data were pulled from the IPUMS ACS 2023 microdata and the sample is limited to individuals that indicated they rent their dwelling and have positive household income. We collapsed the data to the household level by generating variables describing the demographic and socioeconomic composition of the household. Additionally, we included household level variables on geography, population density, number of rooms, 
+The data were pulled from the IPUMS ACS 2023 microdata and the sample is limited to individuals that indicated they rent their dwelling and have positive household income. We collapsed the data to the household level by generating variables describing the demographic and socioeconomic composition of the household. Additionally, we included household level variables on geography, population density, number of rooms,
 
 ```{r}
 #Note: we need to separate this part into a cleaning script that writes a .csv that we then use for the modeling section
@@ -162,6 +162,11 @@ florida_split <- initial_split(data = acs_florida, prop = 0.75)
 florida_train <- training(x = florida_split)
 florida_test <- testing(x = florida_split)
 
+```
+
+Data visualization- Training Data
+
+```{r}
 #INSERT EXPLORATORY DATA ANALYSIS OF TRAINING DATA. AT LEAST TWO VISUALIZATIONS
 
 ## Visualization 1: Distribution of Rent Burden (Outcome Variable)
@@ -182,11 +187,15 @@ florida_train |>
 #  geom_col(color = "blue") +
 #  labs(title = "Exploratory Data Analysis of Ridership by Day of the Week") +
 #  theme_minimal()
+```
 
+```{r}
+#create a vfold
 florida_folds <- vfold_cv(data = florida_train, v = 5, repeats = 1)
+```
 
-
-# create a recipe for each outcome variable
+```{r}
+#create a recipe for each outcome variable
 dummy_rec <- recipe(rent_burden ~ ., data = florida_train) |>
   step_rm(rent_burdend) |>
   step_dummy(all_nominal_predictors()) |>
@@ -343,12 +352,14 @@ conf_mat(data = ftd_predictions,
 elastic_net_grid <- grid_regular(penalty(),mixture(), levels = 10)
 
 # created a multinom_regression model to tune the penalty parameter
-
 elastic_net_mod <-multinom_reg(
   penalty = tune(),
   mixture = tune()) |>
    set_mode(mode = "classification") |>
   set_engine("glmnet")
+
+## created a tuning grid for elastic net regularization,
+elastic_net_grid <- grid_regular(penalty(),mixture(), levels = 10)
   
 # created an elastic net workflow 
 elastic_net_wf <- workflow()  |>
@@ -393,17 +404,39 @@ conf_mat(data = predictions,
          estimate = .pred_class,
          case_weights = hhwt)
 
+
+# confusion matrix 
+
+elastic_net_predictions <- bind_cols(
+  florida_train,
+  predict(object = elastic_net_fit, new_data = florida_train),
+  predict(object = elastic_net_fit, new_data = florida_train, type = "prob"))
+
+conf_mat(data = elastic_net_predictions,
+         truth = rent_burdend,
+         estimate = .pred_class,
+         case_weights = hhwt)
+
+ accuracy(data = elastic_net_predictions,
+         truth = rent_burdend,
+         estimate = .pred_class,
+         case_weights = hhwt)
+
+
+precision(data = elastic_net_predictions,
+         truth = rent_burdend,
+         estimate = .pred_class,
+         case_weights = hhwt)
+
+ #accuracy =52.30%
+#precision= 54.13%
+
+#----
+
+#[ KEEP IF WE WANT TO  extract coefficients]
+
+elastic_net_coefs <- elastic_net_final %>%
+  fit(data =florida_train) %>%
+  extract_fit_parsnip() %>%
+  vi(lambda = elastic_net_best$penalty)
 ```
-
-
-
-
-## Analysis
-
-```{r}
-
-```
-
-## Findings/Results
-
-## Conclusions and Recommendations

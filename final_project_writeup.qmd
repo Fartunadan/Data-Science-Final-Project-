@@ -81,11 +81,37 @@ Therefore, our targeting intervention project aims to provide an evidence based 
 
 -   Which modeling approaches (decision tree or elastic net) provide optimal predictive performance?
 
-## Data
+## Data Set Description and Data Preparation
 
-The data were pulled from the IPUMS ACS 2023 microdata and the sample is limited to individuals that indicated they rent their dwelling and have positive household income. We collapsed the data to the household level by generating variables describing the demographic and socioeconomic composition of the household. Additionally, we included household level variables on geography, population density, number of rooms, 
+The data were pulled from the IPUMS American Community Survey (ACS) 2023 microdata. The sample was limited to individuals who reported renting their dwelling and having positive household income, ensuring that rent burden could be meaningfully calculated. The data were further restricted to households located in Florida. Variables related to survey design, sampling identifiers, and other non-essential fields were removed to streamline the dataset for analysis.
 
-*describe dataset and changes made to the data.
+To construct household-level characteristics, individual-level records were grouped by household identifier (serial) Within each household, several proportional and summary measures were created, including the proportion of female household members, average age, proportion of adults, healthcare coverage status, racial and ethnic composition, citizenship status, educational attainment, employment participation, and total weekly hours worked. These variables capture household composition and socioeconomic conditions that may be associated with rent burden. After these features were generated, the data were collapsed to the household level by retaining only the household reference person (relate==1), while individual-level demographic variables were removed.
+
+Rent burden measures were constructed using gross monthly rent and household income. An annualized rent-to-income ratio was calculated, from which two outcomes were derived: a binary rent burden indicator (rent exceeding 30% of income) and a three-category ordered factor distinguishing **not rent burdened**, **rent burdened** (30–50%), and **severely rent burdened** (over 50%). The categorical outcome variable was explicitly ordered to reflect increasing levels of financial strain. Several remaining variables were converted to factors, educational attainment was treated as an ordered factor, and household survey weights were designated using frequency weights (hhwt). Finally, variables used directly to construct the rent burden outcomes (rent and income measures) were removed to prevent data leakage.
+
+The resulting dataset (acs_florida) represents a clean, household-level analytic file suitable for modeling rent burden among Florida renter households.
+
+## Training–Testing Data Split and Exploratory Analysis of the Training Data
+
+After constructing the final household-level dataset, the data were split into training and testing subsets to support model development and evaluation. Using a fixed random seed (set.seed(30061825)) ensured that the split was **reproducible**. We randomly split to allocate **75% of the observations to the training set** and the remaining **25% to the testing set**. The training data were used to fit and tune the models, while the testing data were held out to provide an unbiased assessment of model performance on unseen data.
+
+#### Visualization 1: Distribution of Rent Burden in Training Data (Outcome Variable)
+
+```{r}
+#| echo: false 
+florida_train |>
+  count(rent_burdend) |>
+  ggplot(aes(x = rent_burdend, y = n, fill = rent_burdend)) +
+  geom_col() +
+  labs(
+    title = "Distribution of Rent Burden Among Florida Renter Households",
+    x = "Rent Burden Category",
+    y = "Number of Households"
+  ) +
+  theme_minimal() 
+```
+
+The bar chart shows the distribution of rent burden categories among Florida renter households in the training dataset. The largest group consists of households that are not rent burdened, indicating that a substantial portion of renters spend less than 30% of their income on housing. However, a considerable number of households fall into the rent burdened and extremely rent burdened categories, with the extremely rent burdened group slightly larger than the rent burdened group. This distribution highlights that housing affordability is a significant issue for many renters in Florida and suggests a meaningful class imbalance that should be considered when modeling rent burden outcomes.
 
 ## Model Selection
 
@@ -119,18 +145,32 @@ florida_train |>
   theme_minimal() 
 ```
 
+## Model Performance
 
-* Model 1 
+-   Model 1
 
+-   Model 2
 
-* Model 2
+***Model 3:*** Elastic Net multinomial regression model
 
+An Elastic Net multinomial regression model was developed to classify the target variable, rent_burdend. The model was tuned by optimizing two key hyperparameters: penalty and mixture, which control the strength and balance of L1 (Lasso) and L2 (Ridge) regularization. Hyperparameter tuning was conducted using cross-validation with a grid, and model performance was evaluated using accuracy and precision. The best-performing model was selected based on precision and subsequently finalized and fitted to the full training dataset.
 
-* Model 3 
+The final Elastic Net model achieved an accuracy of 52.30% and a precision of 54.13%, indicating moderate predictive performance. However, during cross-validation, warnings occurred because the model failed to predict certain outcome categories, specifically “rent burdened” and “severely rent burdened” in several resampling folds. When no observations are predicted for a given class, both true positives and false positives equal zero, making precision undefined for that class. As a result, those classes were excluded from the averaged precision calculation, despite having a substantial number of true observations.
 
+This issue is further illustrated in the confusion matrix, where the model never predicts the “rent burdened” category and heavily favors the “severely rent burdened” and “not rent burdened” classes. This pattern suggests that the model struggles to distinguish between intermediate rent burden categories. While the Elastic Net approach serves as a useful baseline, these results suggest that it does not provide the strongest overall performance for accurately classifying rent burden status.
 
-* Analysis of best model
-* variable importance and compare accuracy and precision on testing data to training data (Daija's model) 
+## Analysis
+
+```{r}
+
+```
+
+## Findings/Results
+
+## Conclusions and Recommendations
+
+-   Analysis of best model
+
+-   variable importance and compare accuracy and precision on testing data to training data (Daija's model)
 
 Conclusion and Recommendations
-
