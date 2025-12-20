@@ -6,6 +6,7 @@ embed-resources: true
 execute:
   warning: false
   message: false
+  echo: false
 editor: visual
 ---
 
@@ -29,8 +30,6 @@ Florida residents experience particularly high levels of rent burden with a medi
 ### remember to add additional detail about the visualization below
 
 ```{r}
-#| echo: false 
-
 library(tidyverse)
 library(tidymodels)
 library(rpart.plot)
@@ -98,7 +97,27 @@ After constructing the final household-level dataset, the data were split into t
 #### Visualization 1: Distribution of Rent Burden in Training Data (Outcome Variable)
 
 ```{r}
-#| echo: false 
+library(tidyverse)
+library(tidymodels)
+library(rpart.plot)
+library(vip)
+library(haven)
+
+acs_florida <- read_csv("data/acs_florida.csv")
+
+acs_florida <- acs_florida |>
+  mutate(across(c(rent_burden, hhtype, cbhhtype, countyfip, metro, city, marst), ~ factor(.x, ordered = FALSE)),
+         educd = factor(educd, ordered = TRUE),
+         hhwt = frequency_weights(hhwt),
+         rent_burdend = factor(rent_burdend, levels = c("severely rent burdened", "rent burdened", "not rent burdened"), ordered = TRUE))
+
+set.seed(30061825)
+
+florida_split <- initial_split(data = acs_florida, prop = 0.75)
+
+florida_train <- training(x = florida_split)
+florida_test <- testing(x = florida_split)
+
 florida_train |>
   count(rent_burdend) |>
   ggplot(aes(x = rent_burdend, y = n, fill = rent_burdend)) +
@@ -108,14 +127,30 @@ florida_train |>
     x = "Rent Burden Category",
     y = "Number of Households"
   ) +
-  theme_minimal() 
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
 The bar chart shows the distribution of rent burden categories among Florida renter households in the training dataset. The largest group consists of households that are not rent burdened, indicating that a substantial portion of renters spend less than 30% of their income on housing. However, a considerable number of households fall into the rent burdened and extremely rent burdened categories, with the extremely rent burdened group slightly larger than the rent burdened group. This distribution highlights that housing affordability is a significant issue for many renters in Florida and suggests a meaningful class imbalance that should be considered when modeling rent burden outcomes.
 
+#### Visualization 2: Density Plot: Age Distribution of Rent-Burdened vs Non-Rent Burdened
+```{r}
+florida_train |>
+  ggplot(aes(x = mean_age, fill = factor(rent_burden))) +
+  geom_density(alpha = 0.6) +
+  scale_fill_manual(values = c("0" = "lightblue", "1" = "plum"),
+                    labels = c("0" = "not rent burdened", "1" = "rent burdened")) +
+  labs(title = "Age Distribution: Rent-Burdened vs Non-Rent-Burdened (Density)",
+       x = "Mean Household Age",
+       y = "Density",
+       fill = "Status") +
+  theme_minimal()
+```
+ (Daija to insert description here)
+
 ## Model Selection
 
-We decided to create three different models, a decision tree with a binary outcome variable, a decision tree with a three level factor variable, and a parametric classification model. For the third model, we developed an Elastic Net model to predict rent burden among Florida renter households. The model combines L1 (lasso) and L2 (ridge) regularization to handle multicollinearity and select important features. We chose an elastic net model due to its ability to perform well with datasets that have multicollinearity and a mix of categorical and numeric variables.
+We decided to create three different models, a decision tree with a binary outcome variable, a decision tree with a three level factor variable, and a parametric classification model. [Include justification for decision tree]. For the third model, we developed an Elastic Net model to predict rent burden among Florida renter households. The model combines L1 (lasso) and L2 (ridge) regularization to handle multicollinearity and select important features. We chose an elastic net model due to its ability to perform well with datasets that have multicollinearity and a mix of categorical and numeric variables.
 
 *describe process of splitting data into training and testing and then discuss how the training data look by describing the two data visualizations*
 
@@ -131,18 +166,22 @@ florida_test <- testing(x = florida_split)
 
 #INSERT EXPLORATORY DATA ANALYSIS OF TRAINING DATA. AT LEAST TWO VISUALIZATIONS
 
-## Visualization 1: Distribution of Rent Burden (Outcome Variable)
+```
+
+
+```{r}
+#| echo: false
 
 florida_train |>
-  count(rent_burdend) |>
-  ggplot(aes(x = rent_burdend, y = n, fill = rent_burdend)) +
-  geom_col() +
-  labs(
-    title = "Distribution of Rent Burden Among Florida Renter Households",
-    x = "Rent Burden Category",
-    y = "Number of Households"
-  ) +
-  theme_minimal() 
+  ggplot(aes(x = mean_age, fill = factor(rent_burden))) +
+  geom_density(alpha = 0.6) +
+  scale_fill_manual(values = c("0" = "lightblue", "1" = "plum"),
+                    labels = c("0" = "not rent burdened", "1" = "rent burdened")) +
+  labs(title = "Age Distribution: Rent-Burdened vs Non-Rent-Burdened (Density)",
+       x = "Mean Household Age",
+       y = "Density",
+       fill = "Status") +
+  theme_minimal()
 ```
 
 ## Model Performance

@@ -9,152 +9,31 @@ execute:
 editor: visual
 ---
 
-# Rent Burden in America
+# Predicting Rent Burden in Florida
+
+## Model Creation
+
+Read in the cleaned ACS data
 
 ```{r}
-#| echo: false 
-knitr::include_graphics("image01.avif")
-```
-
-## Problem Statement:
-
-Housing affordability has reached a critical juncture for American renters.
-
--   Between 2021 and 2023, the number of cost-burdened renter households those spending more than 30% of their income on rent and utilities climbed to an unprecedented 22.6 million, with 12.1 million households severely burdened by spending over half their income on housing.
-
--   Nearly half of all renter households now face cost burden, and these impacts fall disproportionately across racial lines, exacerbating existing inequalities.
-
-Florida residents experience particularly high levels of rent burden with a median gross rent as percentage of income at 34.5%, the highest in the country. With a statewide ban on rent stabilization, increased migration from northern states, and a housing construction market unable to keep up with demand, policymakers are preparing for even greater constraints on affordable housing by 2034. This escalating crisis threatens not only individual financial stability but also broader economic health, as families sacrifice spending on healthcare, education, and savings to maintain shelter. Understanding the drivers and patterns of rent burden is essential to proper policy and preparation.
-
-```{r}
-#| echo: false 
-
 library(tidyverse)
 library(tidymodels)
 library(rpart.plot)
 library(vip)
 library(haven)
-library(dotenv)
-library(tidycensus)
 
-load_dot_env()
+acs_florida <- read_csv("data/acs_florida.csv")
 
-credential <- Sys.getenv("census_api_key")
-
-get_acs(
-  geography = "county",
-  variables = "B25071_001E",
-    geometry = TRUE,
-    year = 2023,
-    output = "wide",
-    state = 12,
-    key = credential) |>
-ggplot() +
-  geom_sf(mapping = aes(fill = B25071_001E)) +
-  scale_fill_gradient(
-    low = "lightyellow",
-    high = "darkred",
-    name = "Median Rent as % of Income"
-  ) +
-  labs(title = "Median Rent as a % of Household Income in Florida by County, 2023") +
-  theme_void()
-
-```
-
-Our targeting intervention project aims to provide an evidence based prediction tool to support resource allocation decision making at county and state levels. A predictive model addressing rent burden can identify at-risk populations and forecast future trends to inform policies that prevent more households from falling into financial precarity. Without such tools, Florida's responses will remain reactive rather than preventive, leaving vulnerable communities increasingly exposed to housing instability and its cascading consequences.
-
-## Research Question: Predicting Household Rent Burden
-
-**Primary Research Question:** Can we develop a model that adequately predicts a household's rent burden status using socioeconomic and demographic characteristics?
-
-**Secondary Research Question:** Which variables are the most important in predicting the extent to which a household is rent burdened?
-
-*Model Development:*
-
--   What combination of socioeconomic and demographic factors best predicts rent burden status?
-
--   How accurately can we classify households into burden categories (not burdened, burdened, severely burdened)?
-
--   Which modeling approaches (**Linear regression, decision tree, random forest, etc.NEED TO UPDATE**) provide optimal predictive performance?
-
-## Data
-
-The data were pulled from the IPUMS ACS 2023 microdata and the sample is limited to individuals that indicated they rent their dwelling and have positive household income. We collapsed the data to the household level by generating variables describing the demographic and socioeconomic composition of the household. Additionally, we included household level variables on geography, population density, number of rooms,
-
-```{r}
-#Note: we need to separate this part into a cleaning script that writes a .csv that we then use for the modeling section
-
-data <- read_dta("data/ACS_extract.dta")
-acs2023 <- data |>
-  filter(ownershpd == 22 & hhincome > 0) |> #keep those who rent "with cash" and those with positive household income
-  select(-cbserial, -year, -sample, -gq, -ownershp, -ownershpd, -multgend, -perwt, -related, -raced, -hispand, -empstatd, -strata, -cluster) |> #drop unnecessary variables
-  filter(statefip == 12) # filter to Florida
-
-#creating new household level variables based on household composition, broken up for ease of processing
-
-acs2023 <- acs2023 |>
-  group_by(serial) |>
-  mutate(prop_female = mean(sex == 2, na.rm = TRUE),
-         mean_age = mean(age, na.rm = TRUE),
-         prop_adult = mean(age >= 18, na.rm = TRUE),
-         prop_healthcare = mean(hcovany == 2, na.rm = TRUE))|>
-  ungroup()
-         
-acs2023 <- acs2023 |>
-  group_by(serial) |>
-  mutate(prop_white = mean(race == 1, na.rm = TRUE),
-            prop_black = mean(race == 2, na.rm = TRUE),
-            prop_ai_an = mean(race == 3, na.rm = TRUE),
-            prop_asian = mean(race == 4| race == 5| race == 6, na.rm = TRUE)) |>
-  ungroup()
-
-acs2023 <- acs2023 |>
-  group_by(serial) |>
-  mutate(prop_hispanic = mean(hispan >0 & hispan < 9, na.rm = TRUE),
-         prop_citizen = mean(citizen == 0 | citizen == 1| citizen == 2, na.rm = TRUE),
-         prop_hsgrad = sum(educd >= 62 & age >= 18, na.rm = TRUE) / sum(age >=18), 
-         prop_colgrad = sum(educd >= 101 & age >= 18, na.rm = TRUE) / sum(age >=18)) |>
-  ungroup()
-
-acs2023 <- acs2023 |>
-  group_by(serial) |>
-  mutate(prop_empstat = sum (empstat == 1  & age >= 16, na.rm = TRUE)/ sum(age >=16),
-         total_hrs = sum(uhrswork, na.rm = TRUE)) |>
-  ungroup()
-
-# getting the data to the household level, creating rent burden variables, and designating the weight variable
-
-acs_household <- acs2023 |>
-  filter(relate == 1) |>
-  select(-relate, -sex, -age, -race, -hispan, -citizen, -hcovany, -empstat, -uhrswork) |>
-  mutate(rent_income = (rentgrs*12)/hhincome,
-         rent_burden = if_else(rent_income > .3, 1, 0),
-         rent_burdend = case_when(
-           rent_income > .5 ~ "severely rent burdened",
-           rent_income > .3 ~ "rent burdened",
-           rent_income <= .3 ~ "not rent burdened"
-         ),
-         rent_burdend = factor(rent_burdend, levels = c("severely rent burdened", "rent burdened", "not rent burdened"), ordered = TRUE))
-
-acs_household <- acs_household |>
+acs_florida <- acs_florida |>
   mutate(across(c(rent_burden, hhtype, cbhhtype, countyfip, metro, city, marst), ~ factor(.x, ordered = FALSE)),
          educd = factor(educd, ordered = TRUE),
-         hhwt = frequency_weights(hhwt))
-
-# removing variables used to generate our outcome
-acs_florida <- acs_household |>
-  select(-rent_income, -rentgrs, -hhincome)
-
-#write csv
-
-
+         hhwt = frequency_weights(hhwt),
+         rent_burdend = factor(rent_burdend, levels = c("severely rent burdened", "rent burdened", "not rent burdened"), ordered = TRUE))
 ```
 
-## Models
+Split the data into training and testing sets
 
 ```{r}
-# split the data into training and testing sets 
-
 set.seed(30061825)
 
 florida_split <- initial_split(data = acs_florida, prop = 0.75)
@@ -164,12 +43,9 @@ florida_test <- testing(x = florida_split)
 
 ```
 
-Data visualization- Training Data
+Data Exploration - Training Data
 
 ```{r}
-#INSERT EXPLORATORY DATA ANALYSIS OF TRAINING DATA. AT LEAST TWO VISUALIZATIONS
-
-## Visualization 1: Distribution of Rent Burden (Outcome Variable)
 
 florida_train |>
   count(rent_burdend) |>
@@ -180,22 +56,35 @@ florida_train |>
     x = "Rent Burden Category",
     y = "Number of Households"
   ) +
-  theme_minimal() 
-
-#florida_train |>
-#  ggplot(aes(x = rent_burden, y = )) +
-#  geom_col(color = "blue") +
-#  labs(title = "Exploratory Data Analysis of Ridership by Day of the Week") +
-#  theme_minimal()
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
+The bar chart shows the distribution of rent burden categories among Florida renter households in the training data set. The largest group consists of households that are not rent burdened, indicating that a substantial portion of renters spend less than 30% of their income on housing. However, a considerable number of households fall into the rent burdened and extremely rent burdened categories, with the extremely rent burdened group slightly larger than the rent burdened group. This distribution highlights that housing affordability is a significant issue for many renters in Florida and suggests a meaningful class imbalance that should be considered when modeling rent burden outcomes.
 
 ```{r}
-#create a vfold
+florida_train |>
+  ggplot(aes(x = mean_age, fill = factor(rent_burden))) +
+  geom_density(alpha = 0.6) +
+  scale_fill_manual(values = c("0" = "lightblue", "1" = "plum"),
+                    labels = c("0" = "not rent burdened", "1" = "rent burdened")) +
+  labs(title = "Age Distribution: Rent-Burdened vs Non-Rent-Burdened (Density)",
+       x = "Mean Household Age",
+       y = "Density",
+       fill = "Status") +
+  theme_minimal()
+```
+
+(insert brief description)
+
+set up vfolds for cross validation
+
+```{r}
 florida_folds <- vfold_cv(data = florida_train, v = 5, repeats = 1)
 ```
 
+create a recipe for each outcome variable
+
 ```{r}
-#create a recipe for each outcome variable
 dummy_rec <- recipe(rent_burden ~ ., data = florida_train) |>
   step_rm(rent_burdend) |>
   step_dummy(all_nominal_predictors()) |>
@@ -210,14 +99,14 @@ factor_rec <- recipe(rent_burdend ~ ., data = florida_train) |>
   step_normalize(all_numeric_predictors()) |>
   step_corr(all_integer_predictors())
 
-bake(prep(dummy_rec, training = florida_train), new_data = florida_train)
-bake(prep(factor_rec, training = florida_train), new_data = florida_train)
+#bake(prep(dummy_rec, training = florida_train), new_data = florida_train)
+#bake(prep(factor_rec, training = florida_train), new_data = florida_train)
 ```
 
-```{r}
-#model 1: Decision tree w/ dummy variable : 3 hyper parameters(cost complexity, treedepth,min n)
+Model 1: Decision Tree with dummy variable
 
-# create model w/ hyperparameters 
+```{r}
+# create model, tuning cost complexity, tree depth, and min n 
 dummy_mod <-
   decision_tree(
     cost_complexity = tune(),
@@ -227,12 +116,12 @@ dummy_mod <-
   set_engine(engine = "rpart") |>
   set_mode(mode = "classification")  
   
-# create hypertuning grid 
+# create tuning grid for hyperparameters 
 florida_grid <- grid_regular(
   cost_complexity(range = c(-5, -1)), 
   tree_depth(range = c(3, 15)), 
   min_n(),
-  levels = 10
+  levels = 2
   )
   
 # create workflow 
@@ -241,6 +130,7 @@ dummy_wf <- workflow() |>
   add_model(dummy_mod) |>
   add_case_weights(hhwt)
 
+#set up resamples 
 dummy_res <-
   dummy_wf |>
   tune_grid(resamples = florida_folds,
@@ -250,6 +140,11 @@ dummy_res <-
 dummy_best <- dummy_res |>
   select_best(metric = "precision")
 
+dummy_best
+```
+
+
+```{r}
 dummy_final_wf <- 
   dummy_wf |> 
   finalize_workflow(select_best(dummy_res, metric = "precision"))
@@ -258,7 +153,10 @@ dummy_fit <- fit(dummy_final_wf, data = florida_train)
 
 # create a tree
 rpart.plot::rpart.plot(x = dummy_fit$fit$fit$fit)
+```
 
+
+```{r}
 dummy_predictions <- bind_cols(
   florida_train,
   predict(object = dummy_fit, new_data = florida_train),
@@ -285,7 +183,7 @@ precision(data = dummy_predictions,
 ```{r}
 #Model 2: Decision tree w/ factor variable 
 
-# create a cart model object
+# create model, tuning cost complexity, tree depth, and min n 
 
 factor_dt_mod <-
   decision_tree(
@@ -296,20 +194,22 @@ factor_dt_mod <-
   set_engine(engine = "rpart") |>
   set_mode(mode = "classification")
 
+# create tuning grid for hyperparameters 
 factor_dt_grid <- grid_regular(
   cost_complexity(range = c(-5, -1)), 
   tree_depth(range = c(3, 15)), 
   min_n(),
-  levels = 10
+  levels = 2
 )
 
+# create workflow 
 factor_dt_workflow <-
   workflow() |>
   add_recipe(factor_rec) |>
   add_model(factor_dt_mod) |>
   add_case_weights(hhwt)
   
-# fit the model
+#set up resamples 
 factor_dt_res <-
   factor_dt_workflow |>
   tune_grid(resamples = florida_folds,
@@ -319,6 +219,11 @@ factor_dt_res <-
 fdt_best <- factor_dt_res |>
   select_best(metric = "precision")
 
+fdt_best
+```
+
+
+```{r}
 fdt_final_wf <- 
   factor_dt_workflow |> 
   finalize_workflow(select_best(factor_dt_res, metric = "precision"))
@@ -327,8 +232,12 @@ fdt_fit <- fit(fdt_final_wf, data = florida_train)
 
 # create a tree
 rpart.plot::rpart.plot(x = fdt_fit$fit$fit$fit)
+```
 
+
+```{r}
 # predict the predicted class and the predicted probability of each class
+
 fdt_predictions <- bind_cols(
   florida_train,
   predict(object = fdt_fit, new_data = florida_train),
@@ -336,6 +245,16 @@ fdt_predictions <- bind_cols(
 )
 
 conf_mat(data = ftd_predictions,
+         truth = rent_burdend,
+         estimate = .pred_class,
+         case_weights = hhwt)
+
+accuracy(data = ftd_predictions,
+         truth = rent_burdend,
+         estimate = .pred_class,
+         case_weights = hhwt)
+
+precision(data = ftd_predictions,
          truth = rent_burdend,
          estimate = .pred_class,
          case_weights = hhwt)
@@ -352,7 +271,7 @@ elastic_net_mod <-multinom_reg(
   set_engine("glmnet")
 
 ## created a tuning grid for elastic net regularization,
-elastic_net_grid <- grid_regular(penalty(),mixture(), levels = 10)
+elastic_net_grid <- grid_regular(penalty(), mixture(), levels = 5)
   
 # created an elastic net workflow 
 elastic_net_wf <- workflow()  |>
@@ -373,6 +292,11 @@ elastic_net_cv <- elastic_net_wf |>
 elastic_net_best <- elastic_net_cv |>
   select_best(metric = "precision")
 
+elastic_net_best
+```
+
+
+```{r}
 # finalize workflow with  elastic net workflow and the best model 
 elastic_net_final <- finalize_workflow(
   elastic_net_wf,
@@ -384,7 +308,6 @@ elastic_net_fit <- elastic_net_final %>%
 
 
 # confusion matrix 
-
 elastic_net_predictions <- bind_cols(
   florida_train,
   predict(object = elastic_net_fit, new_data = florida_train),
@@ -405,16 +328,17 @@ precision(data = elastic_net_predictions,
          truth = rent_burdend,
          estimate = .pred_class,
          case_weights = hhwt)
+```
 
- #accuracy =52.30%
-#precision= 54.13%
 
+
+```{r}
 #----
 
 #[ KEEP IF WE WANT TO  extract coefficients]
 
-elastic_net_coefs <- elastic_net_final %>%
-  fit(data =florida_train) %>%
-  extract_fit_parsnip() %>%
-  vi(lambda = elastic_net_best$penalty)
+#elastic_net_coefs <- elastic_net_final %>%
+#  fit(data =florida_train) %>%
+#  extract_fit_parsnip() %>%
+#  vi(lambda = elastic_net_best$penalty)
 ```
