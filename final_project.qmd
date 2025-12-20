@@ -79,7 +79,7 @@ Our targeting intervention project aims to provide an evidence based prediction 
 
 ## Data
 
-The data were pulled from the IPUMS ACS 2023 microdata and the sample is limited to individuals that indicated they rent their dwelling and have positive household income. We collapsed the data to the household level by generating variables describing the demographic and socioeconomic composition of the household. Additionally, we included household level variables on geography, population density, number of rooms, 
+The data were pulled from the IPUMS ACS 2023 microdata and the sample is limited to individuals that indicated they rent their dwelling and have positive household income. We collapsed the data to the household level by generating variables describing the demographic and socioeconomic composition of the household. Additionally, we included household level variables on geography, population density, number of rooms,
 
 ```{r}
 #Note: we need to separate this part into a cleaning script that writes a .csv that we then use for the modeling section
@@ -137,7 +137,7 @@ acs_household <- acs2023 |>
          rent_burdend = factor(rent_burdend, levels = c("severely rent burdened", "rent burdened", "not rent burdened"), ordered = TRUE))
 
 acs_household <- acs_household |>
-  mutate(across(c(hhtype, cbhhtype, countyfip, metro, city, marst), ~ factor(.x, ordered = FALSE)),
+  mutate(across(c(rent_burden, hhtype, cbhhtype, countyfip, metro, city, marst), ~ factor(.x, ordered = FALSE)),
          educd = factor(educd, ordered = TRUE),
          hhwt = frequency_weights(hhwt))
 
@@ -145,6 +145,7 @@ acs_household <- acs_household |>
 acs_florida <- acs_household |>
   select(-rent_income, -rentgrs, -hhincome)
 
+#write csv
 
 
 ```
@@ -161,6 +162,11 @@ florida_split <- initial_split(data = acs_florida, prop = 0.75)
 florida_train <- training(x = florida_split)
 florida_test <- testing(x = florida_split)
 
+```
+
+Data visualization- Training Data
+
+```{r}
 #INSERT EXPLORATORY DATA ANALYSIS OF TRAINING DATA. AT LEAST TWO VISUALIZATIONS
 
 ## Visualization 1: Distribution of Rent Burden (Outcome Variable)
@@ -181,34 +187,35 @@ florida_train |>
 #  geom_col(color = "blue") +
 #  labs(title = "Exploratory Data Analysis of Ridership by Day of the Week") +
 #  theme_minimal()
+```
 
+```{r}
+#create a vfold
 florida_folds <- vfold_cv(data = florida_train, v = 5, repeats = 1)
+```
 
-
-# create a recipe for each outcome variable
+```{r}
+#create a recipe for each outcome variable
 dummy_rec <- recipe(rent_burden ~ ., data = florida_train) |>
   step_rm(rent_burdend) |>
+  step_dummy(all_nominal_predictors()) |>
   step_nzv(all_predictors()) |>
   step_normalize(all_numeric_predictors()) |>
-  step_corr(all_integer_predictors()) |>
-  step_dummy(all_nominal_predictors())
+  step_corr(all_integer_predictors())
 
 factor_rec <- recipe(rent_burdend ~ ., data = florida_train) |>
   step_rm(rent_burden) |>
+  step_dummy(all_nominal_predictors()) |>
   step_nzv(all_predictors()) |>
   step_normalize(all_numeric_predictors()) |>
-  step_corr(all_integer_predictors()) |>
-  step_dummy(all_nominal_predictors())
+  step_corr(all_integer_predictors())
 
 bake(prep(dummy_rec, training = florida_train), new_data = florida_train)
 bake(prep(factor_rec, training = florida_train), new_data = florida_train)
+```
 
-
-#recipe:
-  #think of steps to include in the recipe
-
-#model 1: Decision tree w/ dummy variable : 3 hyper parameters(cost complexity, treedepth,min n  )
-
+```{r}
+#model 1: Decision tree w/ dummy variable : 3 hyper parameters(cost complexity, treedepth,min n)
 
 # create model w/ hyperparameters 
 dummy_mod <-
@@ -226,32 +233,56 @@ florida_grid <- grid_regular(
   tree_depth(range = c(3, 15)), 
   min_n(),
   levels = 10
-)
-
-florida_grid 
-  
+  )
   
 # create workflow 
 dummy_wf <- workflow() |>
   add_recipe(dummy_rec) |>
-  add_model(dummy_mod) 
+  add_model(dummy_mod) |>
+  add_case_weights(hhwt)
 
-# fit the model 
-florida_fit <- dummy_wf |>
-  fit(data = florida_train) #error here 
-
-# create a tree
-rpart.plot::rpart.plot(x = florida_fit$fit$fit$fit)
-
-# choose the best model 
 dummy_res <-
   dummy_wf |>
   tune_grid(resamples = florida_folds,
             grid = florida_grid,
-            metrics = metric_set(precision))
-dummy_res |>
-  collect_metrics() 
+            metrics = metric_set(accuracy, precision))
 
+dummy_best <- dummy_res |>
+  select_best(metric = "precision")
+
+dummy_final_wf <- 
+  dummy_wf |> 
+  finalize_workflow(select_best(dummy_res, metric = "precision"))
+
+dummy_fit <- fit(dummy_final_wf, data = florida_train)
+
+# create a tree
+rpart.plot::rpart.plot(x = dummy_fit$fit$fit$fit)
+
+dummy_predictions <- bind_cols(
+  florida_train,
+  predict(object = dummy_fit, new_data = florida_train),
+  predict(object = dummy_fit, new_data = florida_train, type = "prob")
+)
+
+conf_mat(data = dummy_predictions,
+         truth = rent_burden,
+         estimate = .pred_class,
+         case_weights = hhwt)
+
+accuracy(data = dummy_predictions,
+         truth = rent_burden,
+         estimate = .pred_class,
+         case_weights = hhwt)
+
+precision(data = dummy_predictions,
+         truth = rent_burden,
+         estimate = .pred_class,
+         case_weights = hhwt)
+
+```
+
+```{r}
 #Model 2: Decision tree w/ factor variable 
 
 # create a cart model object
@@ -269,7 +300,7 @@ factor_dt_grid <- grid_regular(
   cost_complexity(range = c(-5, -1)), 
   tree_depth(range = c(3, 15)), 
   min_n(),
-  levels = 2
+  levels = 10
 )
 
 factor_dt_workflow <-
@@ -298,35 +329,36 @@ fdt_fit <- fit(fdt_final_wf, data = florida_train)
 rpart.plot::rpart.plot(x = fdt_fit$fit$fit$fit)
 
 # predict the predicted class and the predicted probability of each class
-predictions <- bind_cols(
+fdt_predictions <- bind_cols(
   florida_train,
   predict(object = fdt_fit, new_data = florida_train),
   predict(object = fdt_fit, new_data = florida_train, type = "prob")
 )
 
-conf_mat(data = predictions,
+conf_mat(data = ftd_predictions,
          truth = rent_burdend,
          estimate = .pred_class,
          case_weights = hhwt)
+```
 
-#model 3: Elastic net ; justify reason for model
-# tune for penalty -- suggesting elastic net 
-
-## created a tuning grid for elastic net regularization,
-elastic_net_grid <- grid_regular(penalty(),mixture(), levels = 10)
+```{r}
+#Model 3: Elastic net
 
 # created a multinom_regression model to tune the penalty parameter
-
 elastic_net_mod <-multinom_reg(
   penalty = tune(),
   mixture = tune()) |>
    set_mode(mode = "classification") |>
   set_engine("glmnet")
+
+## created a tuning grid for elastic net regularization,
+elastic_net_grid <- grid_regular(penalty(),mixture(), levels = 10)
   
 # created an elastic net workflow 
 elastic_net_wf <- workflow()  |>
   add_recipe(factor_rec)  |>
-  add_model(elastic_net_mod)
+  add_model(elastic_net_mod) |>
+  add_case_weights(hhwt)
 
 # performed hyperparameter tuning using the on your elastic net hyperparameter grid and cross_validation folds
 
@@ -346,24 +378,43 @@ elastic_net_final <- finalize_workflow(
   elastic_net_wf,
   parameters = elastic_net_best)
 
-# fit the final elastic net model to the full training data and extract coefficients
-# by updating the line below
+# fit the final elastic net model to the full training data 
+elastic_net_fit <- elastic_net_final %>%
+  fit(data =florida_train) 
+
+
+# confusion matrix 
+
+elastic_net_predictions <- bind_cols(
+  florida_train,
+  predict(object = elastic_net_fit, new_data = florida_train),
+  predict(object = elastic_net_fit, new_data = florida_train, type = "prob"))
+
+conf_mat(data = elastic_net_predictions,
+         truth = rent_burdend,
+         estimate = .pred_class,
+         case_weights = hhwt)
+
+ accuracy(data = elastic_net_predictions,
+         truth = rent_burdend,
+         estimate = .pred_class,
+         case_weights = hhwt)
+
+
+precision(data = elastic_net_predictions,
+         truth = rent_burdend,
+         estimate = .pred_class,
+         case_weights = hhwt)
+
+ #accuracy =52.30%
+#precision= 54.13%
+
+#----
+
+#[ KEEP IF WE WANT TO  extract coefficients]
+
 elastic_net_coefs <- elastic_net_final %>%
   fit(data =florida_train) %>%
   extract_fit_parsnip() %>%
-  vi(lambda = elastic_net_best$penalty) 
-
+  vi(lambda = elastic_net_best$penalty)
 ```
-
-
-
-
-## Analysis
-
-```{r}
-
-```
-
-## Findings/Results
-
-## Conclusions and Recommendations
