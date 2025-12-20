@@ -150,47 +150,46 @@ Overall, the density curves reveal that rent-burdened and not rent-burdened hous
 
 ## Model Selection
 
-We decided to create three different models, a decision tree with the binary rent burden indicator as the outcome variable, a decision tree with the three categories factor variable, and a parametric classification model with the factor variable. We wanted to compare a non-parametric model (decision tree) and a parametric model (elastic net). We believe that decision trees provide greater ease of interpretation, and we wanted to assess the trade-off between interpretability and model complexity in improving targeting precision. We considered using a continuous variable predicting rent as a proportion of household income. However, we decided to focus on classification with clear thresholds that are relevant to policy makers. 
+We decided to create three different models, a decision tree with the binary rent burden indicator as the outcome variable, a decision tree with the three categories factor variable, and a parametric classification model with the factor variable. We wanted to compare a non-parametric model (decision tree) and a parametric model (elastic net). We believe that decision trees provide greater ease of interpretation, and we wanted to assess the trade-off between interpretability and model complexity in improving targeting precision. We considered using a continuous variable predicting rent as a proportion of household income. However, we decided to focus on classification with clear thresholds that are relevant to policy makers.
 
 The elastic net model combines L1 (lasso) and L2 (ridge) regularization to handle multicollinearity and select important features. We chose an elastic net model due to its ability to perform well with datasets that have multicollinearity and a mix of categorical and numeric variables.
 
 ## Model Performance
 
--   Model 1
+**Model 1**
 
 ```{r}
-#insert confusion matrix png here
+knitr::include_graphics("model1matrix.png")
 ```
 
-Our first model uses the decision tree algorithm with two categories, rent burdened or not rent burdened. We tuned the model for cost complexity, tree depth, and the minimum number of observations is a terminal node, and used 5 fold cross validation. We choose the combination of values for the hyperparameters based on model precision before fitting it to the training data. The hyper parameters associated with the model with the lowest precision were cost complexity = 0.00001, tree depth = 3, and min n = 2. 
+Our first model uses the decision tree algorithm with two categories, rent burdened or not rent burdened. We tuned the model for cost complexity, tree depth, and the minimum number of observations is a terminal node, and used 5 fold cross validation. We choose the combination of values for the hyperparameters based on model precision before fitting it to the training data. The hyper parameters associated with the model with the lowest precision were cost complexity = 0.00001, tree depth = 3, and min n = 2.
 
-The final model selected for this decision tree with a binary outcome variable achieved a precision of 64.8% and an accuracy of 70.5%. Ideally, precision and accuracy would be above 70% for this to be a decent model. The model identifies total hours worked as the root node. Total work hours is defined as a normalized sum of usual work hours across the sample. Since we normalized all numeric predictors in our model, we are unable to assess the corresponding threshold where the tree splits. However, households with total hours worked above that threshold are predicted not to be rent burdened. Otherwise, the household is rent burdened. This outcome suggests that households that work more hours in total are less likely to experience rent burden than those households that work less. 
+The final model selected for this decision tree with a binary outcome variable achieved a precision of 64.8% and an accuracy of 70.5%. Ideally, precision and accuracy would be above 70% for this to be a decent model. The model identifies total hours worked as the root node. Total work hours is defined as a normalized sum of usual work hours across the sample. Since we normalized all numeric predictors in our model, we are unable to assess the corresponding threshold where the tree splits. However, households with total hours worked above that threshold are predicted not to be rent burdened. Otherwise, the household is rent burdened. This outcome suggests that households that work more hours in total are less likely to experience rent burden than those households that work less.
 
 ```{r}
-#insert decision tree here
+knitr::include_graphics("model1dt.png")
 ```
 
 -   Model 2
 
 ```{r}
-#insert confusion matrix png here
+knitr::include_graphics("model2matrix.png")
 ```
 
-For the second model, we similarly use a decision tree to predict rent burden status. However, here we use the factor variable with rent burden categories: not rent burdened, rent burdened, and severely rent burdened. As we did with the first model, we perform tuning on all three hyperparameters and set up resampling for cross validation. The model with the lowest precision had the following values for each hyperparameter: cost complexity = 0.1, tree depth = 3, and min n = 2. 
+For the second model, we similarly use a decision tree to predict rent burden status. However, here we use the factor variable with rent burden categories: not rent burdened, rent burdened, and severely rent burdened. As we did with the first model, we perform tuning on all three hyperparameters and set up resampling for cross validation. The model with the lowest precision had the following values for each hyperparameter: cost complexity = 0.1, tree depth = 3, and min n = 2.
 
 This decision tree with our three level categorical outcome had a precision of 54% and an accuracy of 51.4%, much lower than the model with the binary outcome variable. This model also determined its root node based on total hours worked. However, during cross-validation, warnings occurred because the model failed to predict certain outcome categories, specifically “rent burdened” and “severely rent burdened” in several resampling folds.
 
 This issue is further illustrated in the confusion matrix, where the model never predicts the “rent burdened” category and heavily favors the “severely rent burdened” and “not rent burdened” classes. This pattern suggests that the model struggles to distinguish between intermediate rent burden categories. The model's inability to predict all three categories and its lower precision and accuracy suggest that it will not be useful for implementation purposes.
 
-
 ```{r}
-#insert decision tree here
+knitr::include_graphics("model2dt.png")
 ```
 
 ***Model 3:*** Elastic Net multinomial regression model
 
 ```{r}
-#insert confusion matrix here
+knitr::include_graphics("model2matrix.png")
 ```
 
 Our final model is an Elastic Net multinomial regression model, also developed to predict the three category factor variable. The model was tuned by optimizing two key hyperparameters: penalty and mixture, which control the strength and balance of L1 (Lasso) and L2 (Ridge) regularization. As above, hyperparameter tuning was conducted using cross-validation with a grid, and model performance was evaluated using precision. Once we selected the best-performing model, we finalized it and fit it to the full training data. For this model, the penalty was tuned to 0.0000000001 and the mixture was tuned to 0, suggesting that ridge was the best performing model.
