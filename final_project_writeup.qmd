@@ -162,9 +162,9 @@ The elastic net model combines L1 (lasso) and L2 (ridge) regularization to handl
 knitr::include_graphics("model1matrix.png")
 ```
 
-Our first model uses the decision tree algorithm with two categories, rent burdened or not rent burdened. We tuned the model for cost complexity, tree depth, and the minimum number of observations is a terminal node, and used 5 fold cross validation. We choose the combination of values for the hyperparameters based on model precision before fitting it to the training data. The hyper parameters associated with the model with the lowest precision were cost complexity = 0.001, tree depth = 6, and min n = 2. 
+Our first model uses the decision tree algorithm with two categories, rent burdened or not rent burdened. We tuned the model for cost complexity, tree depth, and the minimum number of observations is a terminal node, and used 5 fold cross validation. We choose the combination of values for the hyperparameters based on model precision before fitting it to the training data. The hyper parameters associated with the model with the lowest precision were cost complexity = 0.001, tree depth = 6, and min n = 2.
 
-The final model selected for this decision tree with a binary outcome variable achieved a precision of 60.8% and an accuracy of 67%. Ideally, precision and accuracy would be above 70% for this to be a decent model, so it's unlikely we would be able to implement with this. 
+The final model selected for this decision tree with a binary outcome variable achieved a precision of 60.8% and an accuracy of 67%. Ideally, precision and accuracy would be above 70% for this to be a decent model, so it's unlikely we would be able to implement with this.
 
 ```{r}
 knitr::include_graphics("model1dt.png")
@@ -176,7 +176,7 @@ knitr::include_graphics("model1dt.png")
 knitr::include_graphics("model2matrix.png")
 ```
 
-For the second model, we similarly use a decision tree to predict rent burden status. However, here we use the factor variable with rent burden categories: not rent burdened, rent burdened, and severely rent burdened. As we did with the first model, we perform tuning on all three hyperparameters and set up resampling for cross validation. The model with the lowest precision had the following values for each hyperparameter: cost complexity = 0.001, tree depth = 6, and minimum n = 2. 
+For the second model, we similarly use a decision tree to predict rent burden status. However, here we use the factor variable with rent burden categories: not rent burdened, rent burdened, and severely rent burdened. As we did with the first model, we perform tuning on all three hyperparameters and set up resampling for cross validation. The model with the lowest precision had the following values for each hyperparameter: cost complexity = 0.001, tree depth = 6, and minimum n = 2.
 
 This decision tree with our three level categorical outcome had a precision of 52.2% and an accuracy of 51.5%, much lower than the model with the binary outcome variable.
 
@@ -187,7 +187,7 @@ knitr::include_graphics("model2dt.png")
 ### Model 3: Elastic net with factor variable
 
 ```{r}
-knitr::include_graphics("modelmatrix.png")
+knitr::include_graphics("model3matrix.png")
 ```
 
 Our final model is an Elastic Net multinomial regression model, also developed to predict the three category factor variable. The model was tuned by optimizing two key hyperparameters: penalty and mixture, which control the strength and balance of L1 (Lasso) and L2 (Ridge) regularization. As above, hyperparameter tuning was conducted using cross-validation with a grid, and model performance was evaluated using precision. Once we selected the best-performing model, we finalized it and fit it to the full training data. For this model, the penalty was tuned to 1 and the mixture was tuned to 0, suggesting that ridge was the best performing model.
@@ -196,17 +196,16 @@ The final elastic net model achieved an accuracy of 49% and a precision of 49.7%
 
 ## Analysis of the Best Model
 
-Based on the results above, it's clear that the first model with the decision tree predicting the binary rent burden variable is the best performing model. Even though the accuracy and precision of the model are below 70 percent, we would still like to explore how this model performs on the testing data. After fitting the model on the testing data, we found that the out of sample precision was 56.4% and the out of sample accuracy was 64.9%. Both of these are lower than the metrics for the training data by about 2- 4 percentage points. 
+Based on the results above, it's clear that the first model with the decision tree predicting the binary rent burden variable is the best performing model. Even though the accuracy and precision of the model are below 70 percent, we would still like to explore how this model performs on the testing data. After fitting the model on the testing data, we found that the out of sample precision was 56.4% and the out of sample accuracy was 64.9%. Both of these are lower than the metrics for the training data by about 2- 4 percentage points.
 
 ### Variable Importance
 
 In analyzing which variables are most important for increasing the accuracy of the model, the variable with the highest importance is the number of persons in a household. This coincides with that variable determining the initial split in the decision tree. The variable with the second highest importance was a dummy variable indicating that the household was one where the head was a female with no spouse/partner present, who had her own children less than age 18. And then the variable with the third highest importance was the mean age of the household, which coincides with our age/rent burden status exploratory analysis above.
 
 ```{r}
-
+knitr::include_graphics("variableimportance.png")
 ```
-
 
 ## Conclusion
 
-Unfortunately, we were unable to develop a model that met our goal for accurately predicting a household's rent burden status using the socioeconomic and demographic variables in our data. Our simplest model with a binary categorization of rent burden status (either rent burdened or not), seemed to perform the best in this regard. We would not recommend this model for implemention or targeting by Florida policy-makers due to its poor performance. However, we find it interesting that the most valuable predictors in this model were related to the number of people in a household, the type of family, and the mean age of the household and suggest that these factors be considered when developing targeting mechanisms for addressing rent burden in Florida.  
+Unfortunately, we were unable to develop a model that met our goal for accurately predicting a household's rent burden status using the socioeconomic and demographic variables in our data. Our simplest model with a binary categorization of rent burden status (either rent burdened or not), seemed to perform the best in this regard. We would not recommend this model for implemention or targeting by Florida policy-makers due to its poor performance. However, we find it interesting that the most valuable predictors in this model were related to the number of people in a household, the type of family, and the mean age of the household and suggest that these factors be considered when developing targeting mechanisms for addressing rent burden in Florida.

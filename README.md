@@ -24,7 +24,7 @@ To determine whether we can develop a model that adequately predicts a household
 
 5.  **model1dt.png:** Image of Model 1 decision tree
 
-6.   **model1matrix.png:**Image of Model 1 matrix
+6.   **model1matrix.png:** Image of Model 1 matrix
 
 7.   **model2dt.png:** Image of Model 1 decision tree
 
@@ -32,4 +32,6 @@ To determine whether we can develop a model that adequately predicts a household
 
 9.   **model3matrix.png:** Image of Model 3 matrix
 
-10. **README.md:** project documentation
+10. **variableimportance.png:** Image for variable importance
+
+11. **README.md:** project documentation
