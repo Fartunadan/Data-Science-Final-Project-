@@ -214,7 +214,6 @@ bake(prep(dummy_rec, training = florida_train), new_data = florida_train)
 bake(prep(factor_rec, training = florida_train), new_data = florida_train)
 ```
 
-
 ```{r}
 #model 1: Decision tree w/ dummy variable : 3 hyper parameters(cost complexity, treedepth,min n)
 
@@ -283,7 +282,6 @@ precision(data = dummy_predictions,
 
 ```
 
-
 ```{r}
 #Model 2: Decision tree w/ factor variable 
 
@@ -343,13 +341,8 @@ conf_mat(data = ftd_predictions,
          case_weights = hhwt)
 ```
 
-
 ```{r}
-#model 3: Elastic net ; justify reason for model
-# tune for penalty -- suggesting elastic net 
-
-## created a tuning grid for elastic net regularization,
-elastic_net_grid <- grid_regular(penalty(),mixture(), levels = 10)
+#Model 3: Elastic net
 
 # created a multinom_regression model to tune the penalty parameter
 elastic_net_mod <-multinom_reg(
@@ -385,24 +378,9 @@ elastic_net_final <- finalize_workflow(
   elastic_net_wf,
   parameters = elastic_net_best)
 
-# fit the final elastic net model to the full training data and extract coefficients
-# by updating the line below
-elastic_net_coefs <- elastic_net_final %>%
-  fit(data =florida_train) %>%
-  extract_fit_parsnip() %>%
-  vi(lambda = elastic_net_best$penalty) #delete this and line above and change name to elastic_net_fit for confusion matrix below
-
-#set up for confusion matrix - Fartun
-predictions <- bind_cols(
-  florida_train,
-  predict(object = fdt_fit, new_data = florida_train),
-  predict(object = fdt_fit, new_data = florida_train, type = "prob")
-)
-
-conf_mat(data = predictions,
-         truth = rent_burdend,
-         estimate = .pred_class,
-         case_weights = hhwt)
+# fit the final elastic net model to the full training data 
+elastic_net_fit <- elastic_net_final %>%
+  fit(data =florida_train) 
 
 
 # confusion matrix 
